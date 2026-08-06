@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Result Checker — Wesley University</title>
+  <style>
+    :root { color-scheme: dark; --bg:#07111f; --panel:#0f1b2c; --text:#f6efe2; --muted:#b4bbca; --accent:#d4a017; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: Inter, Arial, sans-serif; background: linear-gradient(135deg, var(--bg), #15253e); color: var(--text); min-height:100vh; }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 2.5rem 1.25rem 3rem; }
+    .panel { background: rgba(15,27,44,.95); border:1px solid rgba(255,255,255,.08); border-radius: 1.1rem; box-shadow: 0 20px 50px rgba(0,0,0,.25); padding: 1.4rem; }
+    .hero { display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; margin-bottom:1.25rem; }
+    .pill { display:inline-block; padding:.35rem .65rem; border-radius:999px; background:rgba(212,160,23,.18); color:#ffd56d; font-size:.8rem; text-transform:uppercase; letter-spacing:.08em; }
+    form { display:grid; gap:1rem; margin-top:1rem; }
+    .grid { display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:1rem; }
+    label { display:grid; gap:.45rem; font-weight:600; }
+    input, button { border-radius: .8rem; border:1px solid rgba(255,255,255,.12); padding: .85rem 1rem; font: inherit; }
+    input { background: rgba(255,255,255,.06); color: var(--text); }
+    button { background: var(--accent); color: #221602; font-weight:700; cursor:pointer; }
+    .muted { color: var(--muted); }
+    .result { margin-top:1.25rem; }
+    table { width:100%; border-collapse: collapse; margin-top:.8rem; }
+    th, td { padding:.7rem .75rem; border-bottom:1px solid rgba(255,255,255,.08); text-align:left; }
+    .grade-A { color:#7fffc4; font-weight:700; } .grade-B { color:#ffd56d; } .grade-C { color:#ffca94; } .grade-D, .grade-E { color:#ffd0de; } .grade-F { color:#ff8fa3; }
+    .demo { margin-top: .9rem; color: var(--muted); }
+    a { color:#ffd56d; }
+    @media (max-width: 700px){ .grid{grid-template-columns:1fr;} }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="panel">
+      <div class="hero">
+        <div>
+          <span class="pill">Live demo</span>
+          <h1 style="margin:.45rem 0 .2rem;">Check a student result in real time</h1>
+          <p class="muted">This preview reads from the student data bundled with the portal and shows the latest published semester instantly.</p>
+        </div>
+        <a href="../index.html" style="color:#ffd56d; font-weight:700;">← Back to portal</a>
+      </div>
+
+      <form id="resultForm">
+        <div class="grid">
+          <label>Matric number
+            <input id="matric" name="matric" placeholder="WU/2021/0143" required>
+          </label>
+          <label>Surname
+            <input id="lastName" name="last_name" placeholder="Okonkwo" required>
+          </label>
+        </div>
+        <button type="submit">Check result</button>
+      </form>
+
+      <p class="demo">Try <strong>WU/2021/0143</strong> + <strong>Okonkwo</strong> or <strong>WU/2020/0871</strong> + <strong>Adewale</strong>.</p>
+      <div id="resultArea" class="result"></div>
+    </section>
+  </main>
+
+  <script>
+    const form = document.getElementById('resultForm');
+    const area = document.getElementById('resultArea');
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    }
+
+    async function loadStudents() {
+      const response = await fetch('../data/students.json');
+      return response.json();
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const matric = document.getElementById('matric').value.trim();
+      const lastName = document.getElementById('lastName').value.trim();
+      area.innerHTML = '<p class="muted">Checking…</p>';
+
+      try {
+        const students = await loadStudents();
+        const student = students.find((entry) => entry.matric.toUpperCase() === matric.toUpperCase());
+
+        if (!student || student.lastName.toLowerCase() !== lastName.toLowerCase()) {
+          area.innerHTML = '<div class="panel" style="padding:1rem; background:rgba(255,80,80,.09);">No matching result found. Please re-check the matric number and surname.</div>';
+          return;
+        }
+
+        const latest = student.semesters[student.semesters.length - 1];
+        const gpa = latest.courses.reduce((sum, course) => sum + course.total, 0) / latest.courses.length;
+        let html = '<div class="panel" style="padding:1rem; background:rgba(255,255,255,.03);">';
+        html += '<h2 style="margin:0 0 .3rem;">' + escapeHtml(student.firstName + ' ' + student.lastName) + '</h2>';
+        html += '<p class="muted" style="margin:0 0 1rem;">' + escapeHtml(student.department) + ' · ' + escapeHtml(student.level) + ' · ' + escapeHtml(student.matric) + '</p>';
+        html += '<div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; margin-bottom:1rem;">';
+        html += '<strong>' + escapeHtml(latest.session) + ' · ' + escapeHtml(latest.semester) + '</strong>';
+        html += '<span class="pill">GPA ' + gpa.toFixed(2) + '</span>';
+        html += '</div>';
+        html += '<table><thead><tr><th>Code</th><th>Course</th><th>Units</th><th>CA</th><th>Exam</th><th>Total</th><th>Grade</th></tr></thead><tbody>';
+        latest.courses.forEach((course) => {
+          html += '<tr><td>' + escapeHtml(course.code) + '</td><td>' + escapeHtml(course.title) + '</td><td>' + course.units + '</td><td>' + course.ca + '</td><td>' + course.exam + '</td><td>' + course.total + '</td><td class="grade-' + escapeHtml(course.grade) + '">' + escapeHtml(course.grade) + '</td></tr>';
+        });
+        html += '</tbody></table></div>';
+        area.innerHTML = html;
+      } catch (error) {
+        area.innerHTML = '<div class="panel" style="padding:1rem; background:rgba(255,80,80,.09);">Unable to load live result data right now.</div>';
+      }
+    });
+  </script>
+</body>
+</html>

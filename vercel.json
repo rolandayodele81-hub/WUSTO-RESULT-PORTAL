@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/wesley-portal/index.html"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/wesley-portal/$1"
+    }
+  ]
+}
