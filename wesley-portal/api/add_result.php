@@ -1,16 +1,13 @@
 <?php
 // Minimal protected endpoint to add/update a student's semester and courses.
 header('Content-Type: application/json; charset=utf-8');
+require_once __DIR__ . '/../includes/auth.php';
+
+// Require admin session
+require_admin();
+
+// continue with db
 require_once __DIR__ . '/../includes/db.php';
-
-// Basic auth check — in production, replace with proper admin session check
-$auth = isset($_SERVER['PHP_AUTH_USER']) ? $_SERVER['PHP_AUTH_USER'] : null;
-if (!$auth || $auth !== 'admin') {
-    http_response_code(401);
-    echo json_encode(['error' => 'Unauthorized. Use basic auth with admin credentials for initial setup.']);
-    exit;
-}
-
 $payload = json_decode(file_get_contents('php://input'), true);
 if (!$payload || !is_array($payload)) {
     http_response_code(400);

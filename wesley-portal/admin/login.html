@@ -39,15 +39,26 @@
   <script>
     const form = document.getElementById('adminLoginForm');
     const msg = document.getElementById('loginMessage');
-    form.addEventListener('submit', (event) => {
+    form.addEventListener('submit', async (event) => {
       event.preventDefault();
+      msg.textContent = '';
       const username = document.getElementById('adminUsername').value.trim();
       const password = document.getElementById('adminPassword').value;
-      if (username === 'admin' && password === 'admin123') {
-        localStorage.setItem('wesleyAdminAuth', 'true');
-        window.location.href = 'upload-results.html';
-      } else {
-        msg.textContent = 'Invalid admin credentials. Please try again.';
+      try {
+        const res = await fetch('../api/admin_login.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
+          credentials: 'same-origin'
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          window.location.href = 'upload-results.html';
+          return;
+        }
+        msg.textContent = data.error || 'Invalid credentials.';
+      } catch (error) {
+        msg.textContent = 'Unable to contact server.';
       }
     });
   </script>

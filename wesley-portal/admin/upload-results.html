@@ -33,7 +33,7 @@
           <h1 style="margin:0 0 .3rem;">Protected admin panel</h1>
           <p class="muted" style="margin:0;">Upload result documents of any type, extract the student result details we need, and publish GPA/CGPA-ready records.</p>
         </div>
-        <a href="login.html" onclick="localStorage.removeItem('wesleyAdminAuth');">Sign out</a>
+        <a href="#" id="adminSignout">Sign out</a>
       </div>
 
       <form id="uploadForm">
@@ -80,10 +80,28 @@
   <script>
     const STORAGE_KEY = 'wesleyPortal.students.v1';
     const DOCUMENT_KEY = 'wesleyPortal.documents.v1';
-    const AUTH_KEY = 'wesleyAdminAuth';
-    if (localStorage.getItem(AUTH_KEY) !== 'true') {
-      window.location.href = 'login.html';
-    }
+    // Check server-side admin session
+    (async function() {
+      try {
+        const res = await fetch('../api/admin_status.php', { credentials: 'same-origin' });
+        const data = await res.json();
+        if (!data || data.authenticated !== true) {
+          window.location.href = 'login.html';
+        }
+      } catch (e) {
+        window.location.href = 'login.html';
+      }
+    })();
+
+    document.addEventListener('click', async (ev) => {
+      if (ev.target && ev.target.id === 'adminSignout') {
+        ev.preventDefault();
+        try {
+          await fetch('../api/admin_logout.php', { method: 'POST', credentials: 'same-origin' });
+        } catch (e) { /* ignore */ }
+        window.location.href = 'login.html';
+      }
+    });
 
     const form = document.getElementById('uploadForm');
     const summary = document.getElementById('summary');
