@@ -65,9 +65,10 @@
       return String(value).replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
     }
 
-    async function loadStudents() {
-      const response = await fetch('../data/students.json');
-      return response.json();
+    async function fetchResult(matric) {
+      const url = '../api/check_result.php?matric=' + encodeURIComponent(matric);
+      const res = await fetch(url, { credentials: 'same-origin' });
+      return res.json();
     }
 
     form.addEventListener('submit', async (event) => {
@@ -77,30 +78,40 @@
       area.innerHTML = '<p class="muted">Checking…</p>';
 
       try {
-        const students = await loadStudents();
-        const student = students.find((entry) => entry.matric.toUpperCase() === matric.toUpperCase());
-
-        if (!student || student.lastName.toLowerCase() !== lastName.toLowerCase()) {
-          area.innerHTML = '<div class="panel" style="padding:1rem; background:rgba(255,80,80,.09);">No matching result found. Please re-check the matric number and surname.</div>';
+        const data = await fetchResult(matric);
+        if (!data || data.found !== true) {
+          area.innerHTML = '<div class="panel" style="padding:1rem; background:rgba(255,80,80,.09);">No Result Found.</div>';
           return;
         }
 
-        const latest = student.semesters[student.semesters.length - 1];
-        const gpa = latest.courses.reduce((sum, course) => sum + course.total, 0) / latest.courses.length;
+        const student = data.student;
+        // optional surname check to avoid disclosure
+        if (lastName && student.full_name && student.full_name.split(' ').slice(-1)[0].toLowerCase() !== lastName.toLowerCase()) {
+          area.innerHTML = '<div class="panel" style="padding:1rem; background:rgba(255,80,80,.09);">No Result Found.</div>';
+          return;
+        }
+
+        const latest = data.semesters && data.semesters.length ? data.semesters[data.semesters.length - 1] : null;
         let html = '<div class="panel" style="padding:1rem; background:rgba(255,255,255,.03);">';
-        html += '<h2 style="margin:0 0 .3rem;">' + escapeHtml(student.firstName + ' ' + student.lastName) + '</h2>';
-        html += '<p class="muted" style="margin:0 0 1rem;">' + escapeHtml(student.department) + ' · ' + escapeHtml(student.level) + ' · ' + escapeHtml(student.matric) + '</p>';
-        html += '<div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; margin-bottom:1rem;">';
-        html += '<strong>' + escapeHtml(latest.session) + ' · ' + escapeHtml(latest.semester) + '</strong>';
-        html += '<span class="pill">GPA ' + gpa.toFixed(2) + '</span>';
+        html += '<h2 style="margin:0 0 .3rem;">' + escapeHtml(student.full_name) + '</h2>';
+        html += '<p class="muted" style="margin:0 0 1rem;">' + escapeHtml(student.department || '') + ' · ' + escapeHtml(student.level || '') + ' · ' + escapeHtml(student.matric) + '</p>';
+        if (latest) {
+          html += '<div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; margin-bottom:1rem;">';
+          html += '<strong>' + escapeHtml(latest.session_name) + ' · ' + escapeHtml(latest.semester_name) + '</strong>';
+          html += '<span class="pill">GPA ' + parseFloat(latest.gpa || 0).toFixed(2) + '</span>';
+          html += '</div>';
+          html += '<table><thead><tr><th>Code</th><th>Course</th><th>Units</th><th>CA</th><th>Exam</th><th>Total</th><th>Grade</th></tr></thead><tbody>';
+          (latest.courses || []).forEach((course) => {
+            html += '<tr><td>' + escapeHtml(course.code) + '</td><td>' + escapeHtml(course.title) + '</td><td>' + (course.units || 0) + '</td><td>' + (course.ca || 0) + '</td><td>' + (course.exam || 0) + '</td><td>' + (course.total || 0) + '</td><td class="grade-' + escapeHtml(course.grade || '') + '">' + escapeHtml(course.grade || '') + '</td></tr>';
+          });
+          html += '</tbody></table>';
+        } else {
+          html += '<p class="muted">No published semester records found for this student.</p>';
+        }
         html += '</div>';
-        html += '<table><thead><tr><th>Code</th><th>Course</th><th>Units</th><th>CA</th><th>Exam</th><th>Total</th><th>Grade</th></tr></thead><tbody>';
-        latest.courses.forEach((course) => {
-          html += '<tr><td>' + escapeHtml(course.code) + '</td><td>' + escapeHtml(course.title) + '</td><td>' + course.units + '</td><td>' + course.ca + '</td><td>' + course.exam + '</td><td>' + course.total + '</td><td class="grade-' + escapeHtml(course.grade) + '">' + escapeHtml(course.grade) + '</td></tr>';
-        });
-        html += '</tbody></table></div>';
         area.innerHTML = html;
       } catch (error) {
+        console.error(error);
         area.innerHTML = '<div class="panel" style="padding:1rem; background:rgba(255,80,80,.09);">Unable to load live result data right now.</div>';
       }
     });
