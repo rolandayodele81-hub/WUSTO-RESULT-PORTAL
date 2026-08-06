@@ -20,6 +20,29 @@
 
     <div id="results"></div>
 
+    <div id="editModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); align-items:center; justify-content:center;">
+      <div style="background:var(--panel); padding:1rem; border-radius:.6rem; width:min(980px,95%); max-height:90vh; overflow:auto;">
+        <h3 id="modalTitle">Edit Semester</h3>
+        <form id="editForm">
+          <input type="hidden" id="editSemesterId">
+          <div style="display:flex; gap:1rem; margin-bottom:.6rem;">
+            <label style="flex:1;">Session<input id="editSession" style="width:100%; padding:.5rem; border-radius:.4rem;" required></label>
+            <label style="flex:1;">Semester<input id="editSemester" style="width:100%; padding:.5rem; border-radius:.4rem;" required></label>
+          </div>
+          <div style="margin-bottom:.6rem;">
+            <button id="addCourseRow" type="button" class="button">Add course</button>
+          </div>
+          <div style="overflow:auto; max-height:50vh;">
+            <table id="coursesTable" style="width:100%; border-collapse:collapse;"><thead><tr><th>Code</th><th>Title</th><th>Units</th><th>CA</th><th>Exam</th><th></th></tr></thead><tbody></tbody></table>
+          </div>
+          <div style="margin-top:.8rem; display:flex; gap:.5rem; justify-content:flex-end;">
+            <button id="cancelEdit" type="button" class="button">Cancel</button>
+            <button id="saveEdit" type="submit" class="button button-gold">Save changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
   </main>
 
   <script>
@@ -62,8 +85,10 @@
           html += '<div style="margin-top:.6rem;"><button data-sem="' + sem.id + '" class="btnEdit">Edit</button> <button data-sem="' + sem.id + '" class="btnDelSem">Delete Semester</button></div>';
           html += '</div>';
         });
+        window.currentStudentData = data;
         results.innerHTML = html;
         document.querySelectorAll('.btnDelSem').forEach(b => b.addEventListener('click', deleteSemester));
+        document.querySelectorAll('.btnEdit').forEach(b => b.addEventListener('click', (ev) => openEditForm(Number(ev.target.dataset.sem))));
       } catch (e) { results.innerHTML = '<p class="muted">Failed to load student.</p>'; }
     }
 
@@ -88,6 +113,68 @@
         }
       } catch (e) { alert('Delete failed'); }
     }
+
+    function openEditForm(semId) {
+      const data = window.currentStudentData;
+      if (!data) return alert('No student data');
+      const sem = (data.semesters || []).find(s => Number(s.id) === Number(semId));
+      if (!sem) return alert('Semester not found');
+      document.getElementById('editSemesterId').value = sem.id;
+      document.getElementById('editSession').value = sem.session_name || '';
+      document.getElementById('editSemester').value = sem.semester_name || '';
+      const tbody = document.querySelector('#coursesTable tbody');
+      tbody.innerHTML = '';
+      (sem.courses || []).forEach(c => addCourseRow(c));
+      document.getElementById('editModal').style.display = 'flex';
+    }
+
+    function addCourseRow(course) {
+      const tbody = document.querySelector('#coursesTable tbody');
+      const tr = document.createElement('tr');
+      tr.innerHTML = '<td><input class="rowCode" value="' + (course.code || '') + '" style="width:100%"></td>' +
+                     '<td><input class="rowTitle" value="' + (course.title || '') + '" style="width:100%"></td>' +
+                     '<td><input class="rowUnits" type="number" value="' + (course.units || 0) + '" style="width:70px"></td>' +
+                     '<td><input class="rowCa" type="number" value="' + (course.ca || 0) + '" style="width:70px"></td>' +
+                     '<td><input class="rowExam" type="number" value="' + (course.exam || 0) + '" style="width:70px"></td>' +
+                     '<td><button type="button" class="btnRemove">Remove</button></td>';
+      tbody.appendChild(tr);
+      tr.querySelector('.btnRemove').addEventListener('click', () => tr.remove());
+    }
+
+    document.getElementById('addCourseRow').addEventListener('click', () => addCourseRow({}));
+    document.getElementById('cancelEdit').addEventListener('click', (e) => { e.preventDefault(); document.getElementById('editModal').style.display = 'none'; });
+
+    document.getElementById('editForm').addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const semesterId = Number(document.getElementById('editSemesterId').value);
+      const sessionName = document.getElementById('editSession').value.trim();
+      const semesterName = document.getElementById('editSemester').value.trim();
+      const rows = Array.from(document.querySelectorAll('#coursesTable tbody tr'));
+      const courses = rows.map(r => ({
+        code: r.querySelector('.rowCode').value.trim(),
+        title: r.querySelector('.rowTitle').value.trim(),
+        units: Number(r.querySelector('.rowUnits').value) || 0,
+        ca: Number(r.querySelector('.rowCa').value) || 0,
+        exam: Number(r.querySelector('.rowExam').value) || 0
+      }));
+      try {
+        const res = await fetch('../api/update_semester.php', { method: 'POST', credentials: 'same-origin', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ semester_id: semesterId, session: sessionName, semester: semesterName, courses }) });
+        const data = await res.json();
+        if (data.success) {
+          document.getElementById('editModal').style.display = 'none';
+          // refresh view for current student
+          if (window.currentStudentData && window.currentStudentData.student) {
+            // simulate a viewStudent event using matric
+            const fakeEvent = { target: { dataset: { matric: window.currentStudentData.student.matric } } };
+            viewStudent(fakeEvent);
+          } else {
+            location.reload();
+          }
+        } else {
+          alert(data.error || 'Save failed');
+        }
+      } catch (e) { alert('Save request failed'); }
+    });
 
   </script>
 </body>
