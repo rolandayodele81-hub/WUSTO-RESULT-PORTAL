@@ -235,12 +235,19 @@
 
     function extractGpaFromText(text) {
       const match = text.match(/\bGPA[:\s]*([0-9]+(?:\.[0-9]{1,2})?)\b/i);
-      return match ? Number(match[1]) : null;
+      if (match) return Number(match[1]);
+      // fallback: find trailing float numbers and assume second-to-last is GPA when two appear
+      const floats = (text.match(/\b[0-9]+(?:\.[0-9]{1,2})?\b/g) || []).map(Number).filter(n => n > 0 && n <= 5);
+      if (floats.length >= 2) return floats[floats.length - 2];
+      return null;
     }
 
     function extractCgpaFromText(text) {
       const match = text.match(/\bCGPA[:\s]*([0-9]+(?:\.[0-9]{1,2})?)\b/i);
-      return match ? Number(match[1]) : null;
+      if (match) return Number(match[1]);
+      const floats = (text.match(/\b[0-9]+(?:\.[0-9]{1,2})?\b/g) || []).map(Number).filter(n => n > 0 && n <= 5);
+      if (floats.length >= 1) return floats[floats.length - 1];
+      return null;
     }
 
     function parseCourseTextLine(line) {
@@ -396,6 +403,74 @@
         .map((row) => ({ ...row, matric: (row.matric || '').toUpperCase(), courseCode: (row.courseCode || '').toUpperCase() }));
     }
 
+    // Compact transcript parser for documents where course codes appear on a single header line
+    function parseCompactTranscript(text, fallbackSession, fallbackSemester, fallbackMatric) {
+      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      if (!lines.length) return null;
+
+      // find line with many course codes like CSC211 CSC212 ...
+      let codesLineIndex = -1;
+      for (let i = 0; i < lines.length; i++) {
+        const codes = lines[i].match(/\b[A-Z]{2,4}\d{3,4}\b/g);
+        if (codes && codes.length >= 3) { codesLineIndex = i; break; }
+      }
+      if (codesLineIndex === -1) return null;
+
+      const codes = lines[codesLineIndex].match(/\b[A-Z]{2,4}\d{3,4}\b/g) || [];
+      // next line may contain units or numeric columns
+      const next = lines[codesLineIndex + 1] ? lines[codesLineIndex + 1].split(/\s+/) : [];
+      const next2 = lines[codesLineIndex + 2] ? lines[codesLineIndex + 2].split(/\s+/) : [];
+
+      // find a grades line (tokens like 75A or 60B or 66B)
+      let gradesLine = null;
+      for (let j = codesLineIndex + 1; j < Math.min(lines.length, codesLineIndex + 6); j++) {
+        if ((lines[j].match(/\d{1,3}[A-F]/g) || []).length >= Math.floor(codes.length/2)) { gradesLine = lines[j]; break; }
+      }
+
+      // assemble courses by aligning tokens; fallback: assume units in next or numeric tokens present
+      const courses = [];
+      const unitsTokens = next.map(t => t.replace(/[^0-9.-]/g,''));
+      const gradeTokens = gradesLine ? gradesLine.split(/\s+/) : next2;
+
+      for (let k = 0; k < codes.length; k++) {
+        const code = codes[k].toUpperCase();
+        const units = Number(unitsTokens[k]) || 0;
+        // try find grade token containing a letter A-F
+        let grade = null;
+        if (gradeTokens && gradeTokens[k]) {
+          const g = String(gradeTokens[k]).match(/[A-F]/i);
+          grade = g ? g[0].toUpperCase() : null;
+        } else if (gradesLine) {
+          const matches = gradesLine.match(/\d{1,3}[A-F]/g) || [];
+          grade = matches[k] ? matches[k].replace(/\d+/g,'').toUpperCase() : null;
+        }
+        courses.push({ code, title: '', units: units || 0, grade: grade || '' });
+      }
+
+      // extract matric and name
+      const whole = lines.join('\n');
+      const matric = fallbackMatric || extractMatricFromText(whole) || '';
+      // name -- look for line containing matric or uppercase name patterns
+      let name = '';
+      for (let i = 0; i < lines.length; i++) {
+        if (/^[A-Z\s]{6,}$/.test(lines[i].replace(/[^A-Z\s]/g,'')) && lines[i].length > 6) { name = lines[i]; break; }
+        if (matric && lines[i].includes(matric) && i+1 < lines.length) { name = lines[i+1]; break; }
+      }
+
+      // try extract GPA and CGPA from the final lines (look for float numbers between 0 and 5)
+      const floats = whole.match(/\b([0-4]\.\d{2}|5\.00|[0-4]\.\d)\b/g) || whole.match(/\b\d\.\d{2}\b/g) || [];
+      let gpa = null, cgpa = null;
+      if (floats.length >= 2) { gpa = Number(floats[floats.length-2]); cgpa = Number(floats[floats.length-1]); }
+      else {
+        const gmatch = whole.match(/GPA[:\s]*([0-9]+(?:\.[0-9]{1,2})?)/i);
+        const cmatch = whole.match(/CGPA[:\s]*([0-9]+(?:\.[0-9]{1,2})?)/i);
+        if (gmatch) gpa = Number(gmatch[1]);
+        if (cmatch) cgpa = Number(cmatch[1]);
+      }
+
+      return { name: name.trim(), matric: matric.toUpperCase(), session: fallbackSession || '', semester: fallbackSemester || '', courses, gpa: gpa || null, cgpa: cgpa || null };
+    }
+
     async function extractTextFromPdf(file) {
       if (!window.pdfjsLib) {
         throw new Error('PDF parser library failed to load.');
@@ -454,6 +529,25 @@
     async function parseStructuredRows(text, fallbackSession, fallbackSemester, fallbackMatric) {
       if (!text || !text.trim()) return [];
       const trimmed = text.trim();
+      // try compact transcript parser first (many result PDFs follow this compact layout)
+      try {
+        const compact = parseCompactTranscript(trimmed, fallbackSession, fallbackSemester, fallbackMatric);
+        if (compact && compact.courses && compact.courses.length) {
+          // convert to rows compatible with applyParsedRows
+          return compact.courses.map((c) => ({
+            matric: (compact.matric || fallbackMatric || '').toUpperCase(),
+            session: compact.session || fallbackSession || '',
+            semester: compact.semester || fallbackSemester || '',
+            courseCode: c.code || '',
+            courseTitle: c.title || '',
+            units: Number(c.units || 0),
+            ca: 0,
+            exam: 0
+          }));
+        }
+      } catch (e) {
+        // ignore and continue to other parsers
+      }
 
       try {
         const parsed = JSON.parse(trimmed);
