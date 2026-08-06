@@ -37,69 +37,46 @@
       </div>
 
       <form id="uploadForm">
-        <div style="display:flex; align-items:center; gap:1rem; margin-bottom:.6rem;">
-          <label class="muted" style="flex:1;">
+        <div class="grid">
+          <label class="muted">
             <div style="margin-bottom:.35rem; font-weight:600;">Result document</div>
             <input type="file" id="resultsFile" accept=".pdf,.docx,.csv,.json,.txt" required>
           </label>
-          <div id="parserStatus" class="muted" style="white-space:nowrap; font-weight:600;">Checking parsers…</div>
+          <label class="muted">
+            <div style="margin-bottom:.35rem; font-weight:600;">Matric number (optional)</div>
+            <input id="studentMatric" type="text" placeholder="WU/2021/0143">
+          </label>
+          <label class="muted">
+            <div style="margin-bottom:.35rem; font-weight:600;">Academic session</div>
+            <input id="sessionName" type="text" placeholder="2023/2024">
+          </label>
+          <label class="muted">
+            <div style="margin-bottom:.35rem; font-weight:600;">Semester</div>
+            <input id="semesterName" type="text" placeholder="First Semester">
+          </label>
         </div>
         <button type="submit">Upload &amp; publish results</button>
       </form>
-
-      <div style="margin-top:1rem">
-        <label class="muted" style="display:block; margin-bottom:.35rem; font-weight:600;">Or paste JSON extracted elsewhere</label>
-        <textarea id="pasteJson" placeholder='Paste JSON here (see example above)' style="width:100%; min-height:120px; border-radius:.6rem; padding:.6rem; background:rgba(255,255,255,.03); color:var(--text); border:1px solid rgba(255,255,255,.06);"></textarea>
-        <div style="margin-top:.5rem;"><button id="publishJson" class="button">Publish pasted JSON</button></div>
-      </div>
 
       <div id="summary" class="muted" style="margin-top:1rem;"></div>
 
       <h3 style="margin-top:1.35rem;">Supported uploads</h3>
       <p class="muted">PDFs, Word `.docx`, CSVs, JSON and text files are accepted. The page now attempts to extract searchable PDF or DOCX text before parsing student results.</p>
       <p class="muted" style="margin-top:.6rem;"><span class="pill">CSV / JSON / TXT</span><span class="pill">PDF</span><span class="pill">DOCX</span><span class="pill">GPA and CGPA calculated automatically</span></p>
-      <pre class="muted" style="margin-top:.8rem; white-space:pre-wrap;">Example JSON structure (only these fields are used):
+      <pre class="muted" style="margin-top:.8rem; white-space:pre-wrap;">Example JSON structure:
 {
-  "name": "Adaeze Okonkwo",
   "matric": "WU/2021/0143",
+  "session": "2023/2024",
+  "semester": "First Semester",
   "courses": [
-    {"code": "CSC301", "title": "Data Structures", "units": 3}
-  ],
-  "gpa": 4.75,
-  "cgpa": 4.62
+    {"code": "CSC301", "title": "Data Structures", "units": 3, "ca": 24, "exam": 52}
+  ]
 }</pre>
       <p class="muted" style="margin-top:.8rem;"><a href="../student/check-result.html" style="color:#ffd56d;">Open the live checker</a> after uploading.</p>
     </div>
   </main>
-  <script>
-    // Dynamic loader for optional parsers (PDF.js and Mammoth). Tries CDN, then local vendor path.
-    window.PARSERS_AVAILABLE = false;
-    (function loadParsers() {
-      function loadScript(src) {
-        return new Promise((resolve, reject) => {
-          const s = document.createElement('script');
-          s.src = src;
-          s.onload = () => resolve(src);
-          s.onerror = () => reject(src);
-          document.head.appendChild(s);
-        });
-      }
-
-      // try CDN first, then local fallbacks
-      Promise.all([
-        loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.122/pdf.min.js').catch(() => loadScript('assets/js/vendor/pdf.min.js')),
-        loadScript('https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.20/mammoth.browser.min.js').catch(() => loadScript('assets/js/vendor/mammoth.browser.min.js'))
-      ]).then(() => {
-        window.PARSERS_AVAILABLE = !!(window.pdfjsLib && window.mammoth);
-        const el = document.getElementById('parserStatus');
-        if (el) el.textContent = window.PARSERS_AVAILABLE ? 'Parsers: available (PDF/DOCX parsing enabled)' : 'Parsers: not available — upload CSV/JSON or paste JSON below';
-      }).catch(() => {
-        window.PARSERS_AVAILABLE = !!(window.pdfjsLib && window.mammoth);
-        const el = document.getElementById('parserStatus');
-        if (el) el.textContent = window.PARSERS_AVAILABLE ? 'Parsers: available (PDF/DOCX parsing enabled)' : 'Parsers: not available — upload CSV/JSON or paste JSON below';
-      });
-    })();
-  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.122/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.20/mammoth.browser.min.js"></script>
   <script>
     const STORAGE_KEY = 'wesleyPortal.students.v1';
     const DOCUMENT_KEY = 'wesleyPortal.documents.v1';
@@ -420,8 +397,8 @@
     }
 
     async function extractTextFromPdf(file) {
-      if (!window.PARSERS_AVAILABLE || !window.pdfjsLib) {
-        throw new Error('PDF parser library unavailable; paste JSON or upload CSV/JSON instead.');
+      if (!window.pdfjsLib) {
+        throw new Error('PDF parser library failed to load.');
       }
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.122/pdf.worker.min.js';
       const arrayBuffer = await file.arrayBuffer();
@@ -453,8 +430,8 @@
     }
 
     async function extractTextFromDocx(file) {
-      if (!window.PARSERS_AVAILABLE || !window.mammoth) {
-        throw new Error('DOCX parser library unavailable; paste JSON or upload CSV/JSON instead.');
+      if (!window.mammoth) {
+        throw new Error('DOCX parser library failed to load.');
       }
       const arrayBuffer = await file.arrayBuffer();
       const { value } = await mammoth.extractRawText({ arrayBuffer });
@@ -602,10 +579,9 @@
         return;
       }
 
-      // No optional fallback fields — uploads must include matric/session/semester in the file.
-      const fallbackMatric = '';
-      const fallbackSession = '';
-      const fallbackSemester = '';
+      const fallbackMatric = document.getElementById('studentMatric').value.trim();
+      const fallbackSession = document.getElementById('sessionName').value.trim();
+      const fallbackSemester = document.getElementById('semesterName').value.trim();
 
       let text = '';
       try {
@@ -637,31 +613,6 @@
       if (result.issues.length) {
         summary.innerHTML += '<ul class="muted" style="margin-top:.8rem;">' + result.issues.map((issue) => '<li>' + issue + '</li>').join('') + '</ul>';
       }
-    });
-
-    // Publish pasted JSON handler
-    document.getElementById('publishJson').addEventListener('click', (ev) => {
-      ev.preventDefault();
-      const raw = document.getElementById('pasteJson').value.trim();
-      if (!raw) return summary.innerHTML = '<span class="error">Paste some JSON first.</span>';
-      let parsed;
-      try {
-        parsed = JSON.parse(raw);
-      } catch (e) {
-        return summary.innerHTML = '<span class="error">Invalid JSON. Fix and try again.</span>';
-      }
-
-      // coerce to rows and apply
-      (async () => {
-        const rows = coercePayloadToRows(parsed);
-        if (!rows || !rows.length) {
-          summary.innerHTML = '<span class="warning">No result rows found in pasted JSON.</span>';
-          return;
-        }
-        const fakeFile = { name: 'pasted.json', size: raw.length, type: 'application/json' };
-        const res = applyParsedRows(rows, fakeFile, '', '', '');
-        summary.innerHTML = '<div class="success"><strong>' + res.inserted + '</strong> result row(s) published from pasted JSON.</div>' + (res.issues.length ? ('<ul class="muted" style="margin-top:.8rem;">' + res.issues.map((i)=>'<li>'+i+'</li>').join('') + '</ul>') : '');
-      })();
     });
   </script>
 </body>
