@@ -47,3 +47,12 @@ CREATE TABLE IF NOT EXISTS `courses` (
 CREATE INDEX idx_students_matric ON students(matric);
 CREATE INDEX idx_semesters_student ON semesters(student_id);
 CREATE INDEX idx_courses_semester ON courses(semester_id);
+
+-- Track processed uploads to prevent duplicate processing
+CREATE TABLE IF NOT EXISTS `uploads` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `file_hash` VARCHAR(80) NOT NULL UNIQUE,
+  `file_name` VARCHAR(255) NOT NULL,
+  `size` BIGINT NOT NULL,
+  `processed_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

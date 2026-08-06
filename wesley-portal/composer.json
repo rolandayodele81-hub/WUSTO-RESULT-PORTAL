@@ -1,0 +1,10 @@
+{
+  "name": "wesley/portal",
+  "description": "Wesley University result portal dependencies",
+  "require": {
+    "phpoffice/phpspreadsheet": "^1.30"
+  },
+  "autoload": {
+    "psr-4": { "": "includes/" }
+  }
+}

@@ -677,6 +677,31 @@
       const fallbackSession = document.getElementById('sessionName').value.trim();
       const fallbackSemester = document.getElementById('semesterName').value.trim();
 
+      // Try server-side bulk upload first (requires admin session on server)
+      try {
+        const formData = new FormData();
+        formData.append('file', file, file.name);
+        formData.append('session', fallbackSession);
+        formData.append('semester', fallbackSemester);
+        formData.append('matric', fallbackMatric);
+        const res = await fetch('../api/bulk_upload.php', { method: 'POST', credentials: 'same-origin', body: formData });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success) {
+            summary.innerHTML = '<div class="success">Upload processed on server. Imported: <strong>' + (data.inserted || 0) + '</strong>',
+            summary.innerHTML += ' updated: <strong>' + (data.updated || 0) + '</strong>, skipped: <strong>' + (data.skipped || 0) + '</strong>.</div>';
+            return; // done server-side
+          }
+          // server responded but indicated a problem
+          summary.innerHTML = '<div class="warning">Server response: ' + (data.error || JSON.stringify(data)) + '</div>';
+          // fallthrough to client-side processing
+        }
+      } catch (e) {
+        // network/server unreachable — fallback to client-side behavior
+        // console.warn('Server upload failed, falling back to client parsing', e);
+      }
+
+      // Fallback: client-side parsing and storing (preserves existing behavior)
       let text = '';
       try {
         text = await readFilePayload(file);
