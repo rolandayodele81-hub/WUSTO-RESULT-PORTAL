@@ -10,7 +10,6 @@
 
   var DB_KEY = "wesleyPortal.students.v1";
   var SESSION_KEY = "wesleyPortal.session.v1";
-  var DEMO_PASSWORD = "wesley2026";
   var studentsCache = null;
 
   var GRADE_POINTS = { A: 5, B: 4, C: 3, D: 2, E: 1, F: 0 };
@@ -42,7 +41,6 @@
     return [
       {
         matric: "WU/2021/0143",
-        password: DEMO_PASSWORD,
         firstName: "Adaeze",
         lastName: "Okonkwo",
         department: "Computer Science",
@@ -71,7 +69,6 @@
       },
       {
         matric: "WU/2020/0871",
-        password: DEMO_PASSWORD,
         firstName: "Tobiloba",
         lastName: "Adewale",
         department: "Accounting",
@@ -99,7 +96,6 @@
       },
       {
         matric: "WU/2022/1290",
-        password: DEMO_PASSWORD,
         firstName: "Miracle",
         lastName: "Eze",
         department: "Mass Communication",
@@ -213,6 +209,10 @@
         setView("dashboard");
         return;
       }
+      if (target === "login") {
+        setView("login");
+        return;
+      }
       setView(target);
     });
   });
@@ -239,7 +239,6 @@
   }
 
   document.getElementById("tabLogin").addEventListener("click", function () { setView("login"); });
-  document.getElementById("tabRegister").addEventListener("click", function () { setView("register"); });
 
   /* =========================================================
      3. Login
@@ -251,11 +250,10 @@
     errorEl.hidden = true;
 
     var matric = document.getElementById("loginMatric").value.trim();
-    var password = document.getElementById("loginPassword").value;
     var student = findStudent(matric);
 
-    if (!student || student.password !== password) {
-      errorEl.textContent = "We couldn't match that matric number and password. Double-check and try again.";
+    if (!student) {
+      errorEl.textContent = "No published result found for that matric number yet.";
       errorEl.hidden = false;
       return;
     }
@@ -264,61 +262,8 @@
     refreshHeader();
     renderDashboard(student);
     setView("dashboard");
-    showToast("Welcome back, " + student.firstName + ".");
+    showToast("Result loaded for " + student.firstName + " " + student.lastName + ".");
     this.reset();
-  });
-
-  /* =========================================================
-     4. Register
-     ========================================================= */
-
-  document.getElementById("registerForm").addEventListener("submit", function (event) {
-    event.preventDefault();
-    var errorEl = document.getElementById("registerError");
-    var successEl = document.getElementById("registerSuccess");
-    errorEl.hidden = true;
-    successEl.hidden = true;
-
-    var firstName = document.getElementById("regFirst").value.trim();
-    var lastName = document.getElementById("regLast").value.trim();
-    var matric = document.getElementById("regMatric").value.trim();
-    var department = document.getElementById("regDept").value.trim();
-    var level = document.getElementById("regLevel").value;
-    var password = document.getElementById("regPassword").value;
-
-    if (!firstName || !lastName || !matric || !department || password.length < 8) {
-      errorEl.textContent = "Please complete every field. Passwords need at least 8 characters.";
-      errorEl.hidden = false;
-      return;
-    }
-
-    if (findStudent(matric)) {
-      errorEl.textContent = "An account already exists for that matric number. Try signing in instead.";
-      errorEl.hidden = false;
-      return;
-    }
-
-    var students = loadStudents();
-    students.push({
-      matric: matric.toUpperCase(),
-      password: password,
-      firstName: firstName,
-      lastName: lastName,
-      department: department,
-      level: level,
-      semesters: []
-    });
-    saveStudents(students);
-
-    successEl.textContent = "Account created. You can sign in as soon as your first result is published.";
-    successEl.hidden = false;
-    this.reset();
-
-    window.setTimeout(function () {
-      setView("login");
-      document.getElementById("loginMatric").value = matric.toUpperCase();
-      document.getElementById("loginMatric").focus();
-    }, 900);
   });
 
   /* =========================================================
@@ -398,91 +343,6 @@
 
     applyTilt(body.querySelectorAll(".tilt-card"));
   }
-
-  /* =========================================================
-     6. Guest quick-check (flip card, most recent semester only)
-     ========================================================= */
-
-  var guestModal = document.getElementById("guestModal");
-  var flipCard = document.getElementById("flipCard");
-
-  document.querySelectorAll("[data-open]").forEach(function (btn) {
-    btn.addEventListener("click", function () { openModal(guestModal); });
-  });
-  document.querySelectorAll("[data-close]").forEach(function (btn) {
-    btn.addEventListener("click", function () { closeModal(btn.closest(".modal-backdrop")); });
-  });
-  guestModal.addEventListener("click", function (e) { if (e.target === guestModal) closeModal(guestModal); });
-  document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeModal(guestModal); });
-
-  function openModal(modal) {
-    modal.classList.add("is-open");
-    modal.setAttribute("aria-hidden", "false");
-    body.classList.add("has-modal");
-    window.setTimeout(function () {
-      var field = modal.querySelector("input, select, button");
-      if (field) field.focus();
-    }, 30);
-  }
-  function closeModal(modal) {
-    modal.classList.remove("is-open");
-    modal.setAttribute("aria-hidden", "true");
-    body.classList.remove("has-modal");
-    window.setTimeout(function () {
-      flipCard.classList.remove("is-flipped");
-      document.getElementById("guestForm").reset();
-    }, 250);
-  }
-
-  document.getElementById("guestForm").addEventListener("submit", function (event) {
-    event.preventDefault();
-    var matric = document.getElementById("guestMatric").value.trim();
-    var student = findStudent(matric);
-    var resultEl = document.getElementById("guestResult");
-
-    if (!student || !student.semesters.length) {
-      resultEl.innerHTML =
-        '<div class="guest-result-head"><p>' + (student ? "No published result yet" : "No matching student") + '</p><h3>' +
-        (student ? student.firstName + " " + student.lastName : matric.toUpperCase()) + "</h3></div>" +
-        '<p style="text-align:center;color:var(--cream-muted);font-size:0.85rem;">' +
-        (student ? "Check back once your semester result is published, or sign in to see your full record." : "Double-check the matric number, or create an account to get started.") +
-        "</p>" +
-        '<div class="flip-back-actions" style="margin-top:1.25rem;">' +
-        '<button class="button button-outline" type="button" data-flip-back>Try again</button>' +
-        '</div>';
-    } else {
-      var latest = student.semesters[student.semesters.length - 1];
-      var gpa = semesterGpa(latest.courses);
-      var units = latest.courses.reduce(function (sum, c) { return sum + c.units; }, 0);
-      resultEl.innerHTML =
-        '<div class="guest-result-head"><p>' + latest.session + " · " + latest.semester + '</p><h3>' + student.firstName + " " + student.lastName + "</h3></div>" +
-        '<div class="guest-rows">' +
-        '<div class="guest-row"><span>Matric number</span><strong>' + student.matric + '</strong></div>' +
-        '<div class="guest-row"><span>Semester GPA</span><strong>' + gpa.toFixed(2) + ' / 5.00</strong></div>' +
-        '<div class="guest-row"><span>Units this semester</span><strong>' + units + '</strong></div>' +
-        '<div class="guest-row"><span>Courses graded</span><strong>' + latest.courses.length + '</strong></div>' +
-        "</div>" +
-        '<div class="flip-back-actions">' +
-        '<button class="button button-outline" type="button" data-flip-back>Check another</button>' +
-        '<button class="button button-gold" type="button" data-goto-login>Sign in for full record</button>' +
-        "</div>";
-    }
-
-    flipCard.classList.add("is-flipped");
-
-    resultEl.querySelector("[data-flip-back]").addEventListener("click", function () {
-      flipCard.classList.remove("is-flipped");
-      window.setTimeout(function () { document.getElementById("guestForm").reset(); }, 350);
-    });
-    var loginBtn = resultEl.querySelector("[data-goto-login]");
-    if (loginBtn) {
-      loginBtn.addEventListener("click", function () {
-        closeModal(guestModal);
-        setView("login");
-        document.getElementById("loginMatric").value = student.matric;
-      });
-    }
-  });
 
   /* =========================================================
      7. Toast

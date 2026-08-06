@@ -34,7 +34,6 @@
       <button type="submit">Sign in</button>
     </form>
     <p id="loginMessage" class="error" role="alert"></p>
-    <p class="muted" style="margin-top:1rem;">Demo credentials: <strong>admin</strong> / <strong>wesley2026</strong></p>
   </main>
 
   <script>
@@ -44,7 +43,7 @@
       event.preventDefault();
       const username = document.getElementById('adminUsername').value.trim();
       const password = document.getElementById('adminPassword').value;
-      if (username === 'admin' && password === 'wesley2026') {
+      if (username === 'admin' && password === 'admin123') {
         localStorage.setItem('wesleyAdminAuth', 'true');
         window.location.href = 'upload-results.html';
       } else {

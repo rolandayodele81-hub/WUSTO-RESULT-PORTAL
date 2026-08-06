@@ -35,8 +35,7 @@
         </span>
         <button class="nav-link" data-nav="dashboard" id="navDashboard" hidden type="button">My results</button>
         <button class="nav-link" data-nav="logout" id="navLogout" hidden type="button">Sign out</button>
-        <button class="nav-link" data-nav="login" id="navLogin" type="button">Sign in</button>
-        <button class="button button-gold button-small" data-nav="register" id="navRegister" type="button">Create account</button>
+        <button class="nav-link" data-nav="login" id="navLogin" type="button">Check result</button>
         <a class="nav-link" href="admin/login.html" style="text-decoration:none;">Admin</a>
       </nav>
     </div>
@@ -61,12 +60,10 @@
 
         <h1>Your results,<br><span>the moment they're out.</span></h1>
         <p class="motto">&ldquo;Knowledge and Character for Development&rdquo;</p>
-        <p class="hero-intro">Sign in with your matric number any time, day or night, to see your semester scores, GPA and running CGPA the instant results are published — no queueing at the department notice board.</p>
+        <p class="hero-intro">Enter your matric number any time, day or night, to see your semester scores, GPA and running CGPA the instant results are published — no queueing at the department notice board.</p>
 
         <div class="hero-actions">
-          <button class="button button-gold" data-nav="login" type="button">Sign in to check results</button>
-          <button class="button button-outline" data-nav="register" type="button">Create free account</button>
-          <button class="button button-ghost" data-open="guest" type="button">Guest quick-check</button>
+          <button class="button button-gold" data-nav="login" type="button">Check my result</button>
         </div>
 
         <p class="hero-demo-note">Demo matric numbers to try: <button class="chip" data-fill="WU/2021/0143">WU/2021/0143</button><button class="chip" data-fill="WU/2020/0871">WU/2020/0871</button><button class="chip" data-fill="WU/2022/1290">WU/2022/1290</button></p>
@@ -76,8 +73,8 @@
         <section class="service-grid" aria-label="Portal services">
           <article class="tilt-card service-card">
             <span class="service-index">01</span>
-            <h2>Sign in once, check forever</h2>
-            <p>Create an account with your matric number and a password. Come back any time — this term, next term, three years from now — and your full record is right there.</p>
+            <h2>One matric number, full access</h2>
+            <p>Enter your matric number and your result appears instantly. Once the admin uploads your published grades, they’re available right away.</p>
           </article>
           <article class="tilt-card service-card">
             <span class="service-index">02</span>
@@ -103,75 +100,29 @@
         <div class="auth-side">
           <p class="eyebrow">Wesley University Portal</p>
           <h2 class="auth-title">One matric number.<br>Every result you've ever earned.</h2>
-          <p class="auth-copy">Your account remembers your programme, department and every published result. Sign in from any device, any time, and pick up exactly where you left off.</p>
+          <p class="auth-copy">Your result is pulled instantly by matric number once the admin has published it. No password or account setup is needed for students.</p>
           <ul class="auth-list">
-            <li>Bank-style account lockout after repeated failed attempts</li>
             <li>Results only appear once a grade is officially published</li>
-            <li>Your data stays on this device — nothing leaves your browser in this preview</li>
+            <li>Only the admin can upload and publish grades</li>
+            <li>Your record is available instantly from the portal</li>
           </ul>
         </div>
 
         <div class="auth-card tilt-card">
           <div class="auth-tabs" role="tablist">
-            <button class="auth-tab is-active" id="tabLogin" data-tab="login" type="button" role="tab" aria-selected="true">Sign in</button>
-            <button class="auth-tab" id="tabRegister" data-tab="register" type="button" role="tab" aria-selected="false">Create account</button>
+            <button class="auth-tab is-active" id="tabLogin" data-tab="login" type="button" role="tab" aria-selected="true">Check result</button>
           </div>
 
-          <!-- LOGIN -->
           <form class="auth-form is-active" id="loginForm" data-panel="login">
             <p class="form-error" id="loginError" hidden></p>
             <label class="field">
               <span>Matric number</span>
               <input id="loginMatric" name="matric" type="text" autocomplete="username" placeholder="WU/2021/0143" required>
             </label>
-            <label class="field">
-              <span>Password</span>
-              <input id="loginPassword" name="password" type="password" autocomplete="current-password" placeholder="Enter your password" required>
-            </label>
             <button class="button button-gold button-full" type="submit">
-              <span>Sign in</span>
+              <span>View result</span>
             </button>
-            <p class="form-note">Demo password for the sample accounts is <code>wesley2026</code></p>
-          </form>
-
-          <!-- REGISTER -->
-          <form class="auth-form" id="registerForm" data-panel="register">
-            <p class="form-error" id="registerError" hidden></p>
-            <p class="form-success" id="registerSuccess" hidden></p>
-            <div class="field-row">
-              <label class="field">
-                <span>First name</span>
-                <input id="regFirst" type="text" required>
-              </label>
-              <label class="field">
-                <span>Last name</span>
-                <input id="regLast" type="text" required>
-              </label>
-            </div>
-            <label class="field">
-              <span>Matric number</span>
-              <input id="regMatric" type="text" placeholder="WU/2026/0001" required>
-            </label>
-            <div class="field-row">
-              <label class="field">
-                <span>Department</span>
-                <input id="regDept" type="text" placeholder="Computer Science" required>
-              </label>
-              <label class="field">
-                <span>Level</span>
-                <select id="regLevel" required>
-                  <option value="100 Level">100 Level</option>
-                  <option value="200 Level">200 Level</option>
-                  <option value="300 Level">300 Level</option>
-                  <option value="400 Level">400 Level</option>
-                </select>
-              </label>
-            </div>
-            <label class="field">
-              <span>Password (min. 8 characters)</span>
-              <input id="regPassword" type="password" minlength="8" required>
-            </label>
-            <button class="button button-gold button-full" type="submit">Create account</button>
+            <p class="form-note">Only the admin can upload published results for students.</p>
           </form>
         </div>
       </div>
@@ -226,35 +177,6 @@
     </section>
 
   </main>
-
-  <!-- ============ GUEST QUICK CHECK MODAL ============ -->
-  <div class="modal-backdrop" id="guestModal" aria-hidden="true">
-    <section class="modal flip-modal" role="dialog" aria-modal="true" aria-labelledby="guestTitle">
-      <div class="modal-header">
-        <div>
-          <p class="modal-kicker">No account needed</p>
-          <h2 id="guestTitle">Guest quick-check</h2>
-        </div>
-        <button class="modal-close" type="button" data-close aria-label="Close">×</button>
-      </div>
-
-      <div class="flip-stage" id="flipStage">
-        <div class="flip-card" id="flipCard">
-          <div class="flip-face flip-front">
-            <form id="guestForm">
-              <label class="field">
-                <span>Matric number</span>
-                <input id="guestMatric" type="text" placeholder="WU/2021/0143" required>
-              </label>
-              <button class="button button-gold button-full" type="submit">Reveal result</button>
-              <p class="modal-note">Only your most recent published semester is shown here. Sign in for your full transcript.</p>
-            </form>
-          </div>
-          <div class="flip-face flip-back" id="guestResult"></div>
-        </div>
-      </div>
-    </section>
-  </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 

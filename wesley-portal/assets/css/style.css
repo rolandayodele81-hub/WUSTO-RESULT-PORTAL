@@ -547,55 +547,6 @@ table.sem-table td.num { font-family: var(--font-mono); }
 }
 .empty-state h3 { font-family: var(--font-display); color: var(--cream); margin-bottom: 0.5rem; }
 
-/* =====================================================
-   Modal / guest flip-check
-   ===================================================== */
-.modal-backdrop {
-  position: fixed; inset: 0; z-index: 60;
-  display: grid; place-items: center; padding: 1.25rem;
-  background: rgba(1, 10, 7, 0.8);
-  backdrop-filter: blur(10px);
-  opacity: 0; visibility: hidden;
-  transition: opacity 200ms ease, visibility 200ms ease;
-}
-.modal-backdrop.is-open { opacity: 1; visibility: visible; }
-
-.modal {
-  width: min(100%, 26rem);
-  padding: 1.75rem;
-  border-radius: 1.1rem;
-  border: 1px solid var(--line-strong);
-  background: linear-gradient(150deg, #104126, var(--forest-deep));
-  box-shadow: 0 30px 80px -30px rgba(0,0,0,0.9);
-  transform: translateY(10px) scale(0.97);
-  transition: transform 260ms var(--ease-spring);
-}
-.modal-backdrop.is-open .modal { transform: translateY(0) scale(1); }
-
-.modal-header { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: 1.4rem; }
-.modal-kicker { margin: 0 0 0.25rem; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold-pale); }
-.modal h2 { margin: 0; font-family: var(--font-display); font-size: 1.6rem; }
-.modal-close { width: 2rem; height: 2rem; display: grid; place-items: center; border-radius: 0.4rem; font-size: 1.5rem; color: var(--cream-muted); }
-.modal-close:hover { color: var(--gold-soft); background: rgba(248,246,240,0.07); }
-.modal-note { margin: 1rem 0 0; font-size: 0.72rem; color: var(--cream-faint); text-align: center; line-height: 1.5; }
-
-.flip-stage { perspective: 1400px; }
-.flip-card { position: relative; transform-style: preserve-3d; transition: transform 700ms var(--ease-spring); min-height: 15rem; }
-.flip-card.is-flipped { transform: rotateY(180deg); }
-.flip-face { position: absolute; inset: 0; backface-visibility: hidden; }
-.flip-front { position: relative; }
-.flip-back { transform: rotateY(180deg); display: flex; flex-direction: column; justify-content: center; }
-
-.guest-result-head { text-align: center; margin-bottom: 1.1rem; }
-.guest-result-head p { margin: 0.2rem 0 0; font-size: 0.72rem; color: var(--cream-faint); text-transform: uppercase; letter-spacing: 0.08em; }
-.guest-result-head h3 { margin: 0; font-family: var(--font-display); font-size: 1.4rem; }
-.guest-rows { display: grid; gap: 0.55rem; margin-bottom: 1rem; }
-.guest-row { display: flex; justify-content: space-between; padding: 0.5rem 0; border-top: 1px solid rgba(248,246,240,0.08); font-size: 0.85rem; }
-.guest-row span:first-child { color: var(--cream-faint); }
-.guest-row strong { color: var(--gold-soft); font-family: var(--font-mono); }
-.flip-back-actions { display: flex; gap: 0.6rem; }
-.flip-back-actions .button { flex: 1; }
-
 /* ---------- toast ---------- */
 .toast {
   position: fixed; z-index: 80;
