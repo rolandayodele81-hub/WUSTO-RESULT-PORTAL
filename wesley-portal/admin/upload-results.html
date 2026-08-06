@@ -63,6 +63,15 @@
       <h3 style="margin-top:1.35rem;">Supported uploads</h3>
       <p class="muted">PDFs, Word documents, images, text files, CSVs, and JSON are accepted. If the document contains structured result rows, the GPA and CGPA are calculated immediately from the extracted data.</p>
       <p class="muted" style="margin-top:.6rem;"><span class="pill">CSV / JSON / TXT</span><span class="pill">PDF / DOCX / image</span><span class="pill">GPA and CGPA calculated automatically</span></p>
+      <pre class="muted" style="margin-top:.8rem; white-space:pre-wrap;">Example JSON structure:
+{
+  "matric": "WU/2021/0143",
+  "session": "2023/2024",
+  "semester": "First Semester",
+  "courses": [
+    {"code": "CSC301", "title": "Data Structures", "units": 3, "ca": 24, "exam": 52}
+  ]
+}</pre>
       <p class="muted" style="margin-top:.8rem;"><a href="../student/check-result.html" style="color:#ffd56d;">Open the live checker</a> after uploading.</p>
     </div>
   </main>
@@ -201,18 +210,69 @@
       };
     }
 
+    function coercePayloadToRows(payload, fallbackSession, fallbackSemester, fallbackMatric) {
+      const rows = [];
+
+      function visit(value, context) {
+        if (Array.isArray(value)) {
+          value.forEach((item) => visit(item, context));
+          return;
+        }
+
+        if (!value || typeof value !== 'object') return;
+
+        const contextMatric = pickValue(value, ['matric_number', 'matric', 'student_matric', 'studentmatric']) || context.matric || fallbackMatric;
+        const contextSession = pickValue(value, ['session', 'academic_session', 'academicsession']) || context.session || fallbackSession;
+        const contextSemester = pickValue(value, ['semester', 'semester_name', 'semestername']) || context.semester || fallbackSemester;
+
+        const courseCollection = value.courses || value.results || value.result_rows || value.course_rows || value.rows;
+        if (Array.isArray(courseCollection)) {
+          courseCollection.forEach((course) => {
+            rows.push(mapIncomingRow({
+              matric: contextMatric,
+              session: contextSession,
+              semester: contextSemester,
+              course_code: pickValue(course, ['course_code', 'coursecode', 'code']),
+              course_title: pickValue(course, ['course_title', 'coursetitle', 'title', 'course']),
+              units: pickValue(course, ['units', 'credit_units', 'creditunits']),
+              ca_score: pickValue(course, ['ca_score', 'ca', 'cascore']),
+              exam_score: pickValue(course, ['exam_score', 'exam', 'examscore'])
+            }, contextSession, contextSemester, contextMatric));
+          });
+          return;
+        }
+
+        const row = mapIncomingRow(value, contextSession, contextSemester, contextMatric);
+        if (row.matric || row.courseCode || row.courseTitle || row.session || row.semester) {
+          rows.push(row);
+        }
+
+        ['students', 'records', 'results', 'data', 'items', 'entries', 'rows'].forEach((key) => {
+          if (Array.isArray(value[key])) {
+            value[key].forEach((item) => visit(item, { matric: contextMatric, session: contextSession, semester: contextSemester }));
+          }
+        });
+
+        if (value.student && typeof value.student === 'object') {
+          visit(value.student, { matric: contextMatric, session: contextSession, semester: contextSemester });
+        }
+        if (value.result && typeof value.result === 'object') {
+          visit(value.result, { matric: contextMatric, session: contextSession, semester: contextSemester });
+        }
+      }
+
+      visit(payload, {});
+      return rows.filter((row) => row.matric || row.courseCode || row.courseTitle || row.session || row.semester)
+        .map((row) => ({ ...row, matric: (row.matric || '').toUpperCase(), courseCode: (row.courseCode || '').toUpperCase() }));
+    }
+
     function parseStructuredRows(text, fallbackSession, fallbackSemester, fallbackMatric) {
       if (!text || !text.trim()) return [];
       const trimmed = text.trim();
 
       try {
         const parsed = JSON.parse(trimmed);
-        if (Array.isArray(parsed)) {
-          return parsed.map((item) => mapIncomingRow(item, fallbackSession, fallbackSemester, fallbackMatric));
-        }
-        if (parsed && typeof parsed === 'object') {
-          return [mapIncomingRow(parsed, fallbackSession, fallbackSemester, fallbackMatric)];
-        }
+        return coercePayloadToRows(parsed, fallbackSession, fallbackSemester, fallbackMatric);
       } catch (error) {
         // Try other formats below.
       }
