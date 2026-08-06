@@ -176,6 +176,109 @@
       return best;
     }
 
+    function extractMatricFromText(text) {
+      const match = text.match(/\b[A-Z]{2,5}\/20\d{2}\/\d{4}\b/i);
+      return match ? match[0].toUpperCase() : '';
+    }
+
+    function extractStudentNameFromText(text) {
+      const nameMatch = text.match(/\b(Name|Student Name|Candidate)[:\s]+([A-Z][A-Za-z'-]+(?:\s+[A-Z][A-Za-z'-]+){1,3})\b/i);
+      if (nameMatch) {
+        return nameMatch[2].trim();
+      }
+      const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+      for (let i = 0; i < lines.length; i += 1) {
+        const line = lines[i];
+        if (/\bName\b/i.test(line) && /[A-Z][A-Za-z'-]+/.test(line)) {
+          const parts = line.split(/[:\-]/).slice(1).join(' ').trim();
+          if (parts.length > 3) return parts;
+        }
+      }
+      return '';
+    }
+
+    function extractSessionFromText(text) {
+      const match = text.match(/\b(20\d{2}\/20\d{2})\b/);
+      return match ? match[1] : '';
+    }
+
+    function extractSemesterFromText(text) {
+      const match = text.match(/\b(First|Second|Third|Fourth)\s+Semester\b/i) || text.match(/\b(First|Second|Third|Fourth)\s+Sem(?:ester)?\b/i);
+      return match ? match[0].replace(/\s+Sem(?:ester)?/i, ' Semester') : '';
+    }
+
+    function extractGpaFromText(text) {
+      const match = text.match(/\bGPA[:\s]*([0-9]+(?:\.[0-9]{1,2})?)\b/i);
+      return match ? Number(match[1]) : null;
+    }
+
+    function extractCgpaFromText(text) {
+      const match = text.match(/\bCGPA[:\s]*([0-9]+(?:\.[0-9]{1,2})?)\b/i);
+      return match ? Number(match[1]) : null;
+    }
+
+    function parseCourseTextLine(line) {
+      if (!line) return null;
+      const normalized = line.replace(/\s{2,}/g, ' ').trim();
+      if (!normalized || /^(page|signature|remark|total|result|gpa|cgpa|department|student|matric|session|semester|year|score|name)\b/i.test(normalized)) return null;
+      const codeMatch = normalized.match(/\b([A-Z]{2,6}\d{3,4})\b/);
+      if (!codeMatch) return null;
+      const code = codeMatch[1].toUpperCase();
+      const parts = normalized.split(/\s+/).filter(Boolean);
+      const codeIndex = parts.findIndex((part) => part.toUpperCase() === code);
+      if (codeIndex === -1) return null;
+      const tail = parts.slice(codeIndex + 1);
+      const gradeMatch = tail.reverse().find((token) => /^[A-F]$/i.test(token));
+      const grade = gradeMatch ? gradeMatch.toUpperCase() : null;
+      const reversed = tail.reverse();
+      let units = null;
+      if (reversed.length >= 4 && /^[0-9]+$/.test(reversed[reversed.length - 4])) {
+        units = Number(reversed[reversed.length - 4]);
+      }
+      const titleParts = parts.slice(codeIndex + 1, parts.length - (grade ? 1 : 0) - (units !== null ? 1 : 0));
+      const title = titleParts.join(' ').trim();
+      if (!grade || !title) return null;
+      return { code, title, units: units || 0, grade };
+    }
+
+    function parsePdfTextToRows(text, fallbackSession, fallbackSemester, fallbackMatric) {
+      const matric = fallbackMatric || extractMatricFromText(text);
+      const session = fallbackSession || extractSessionFromText(text);
+      const semester = fallbackSemester || extractSemesterFromText(text);
+      const lines = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+      const rows = [];
+      let lastMatric = matric;
+      lines.forEach((line) => {
+        const foundMatric = extractMatricFromText(line);
+        if (foundMatric) {
+          lastMatric = foundMatric;
+        }
+        const course = parseCourseTextLine(line);
+        if (course) {
+          rows.push({
+            matric: (lastMatric || matric || '').toUpperCase(),
+            session: session || 'Unknown',
+            semester: semester || 'Unknown',
+            courseCode: course.code,
+            courseTitle: course.title,
+            grade: course.grade,
+            units: course.units || 0
+          });
+        }
+      });
+      return rows;
+    }
+
+    function extractMetadataFromText(text, fallbackSession, fallbackSemester, fallbackMatric) {
+      const name = extractStudentNameFromText(text);
+      const matric = fallbackMatric || extractMatricFromText(text);
+      const session = fallbackSession || extractSessionFromText(text);
+      const semester = fallbackSemester || extractSemesterFromText(text);
+      const gpa = extractGpaFromText(text);
+      const cgpa = extractCgpaFromText(text);
+      return { name, matric, session, semester, gpa, cgpa };
+    }
+
     function pickValue(row, candidates) {
       if (!row || typeof row !== 'object') return '';
       const keys = Object.keys(row);
@@ -333,6 +436,11 @@
         // Try other formats below.
       }
 
+      const pdfLikeResult = parsePdfTextToRows(trimmed, fallbackSession, fallbackSemester, fallbackMatric);
+      if (pdfLikeResult && Array.isArray(pdfLikeResult.rows) && pdfLikeResult.rows.length) {
+        return pdfLikeResult.rows;
+      }
+
       const lines = trimmed.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
       if (!lines.length) return [];
 
@@ -457,6 +565,7 @@
         return;
       }
 
+      const metadata = extractMetadataFromText(text, fallbackSession, fallbackSemester, fallbackMatric);
       const parsedRows = await parseStructuredRows(text, fallbackSession, fallbackSemester, fallbackMatric);
       const result = applyParsedRows(parsedRows, file, fallbackSession, fallbackSemester, fallbackMatric);
 
@@ -465,7 +574,16 @@
         ? `<strong>${result.inserted}</strong> result row(s) published from the uploaded document.`
         : 'The document was saved, but no structured result rows could be extracted. Upload a CSV, JSON, or text file with result rows to make GPA and CGPA ready.';
 
-      summary.innerHTML = '<div class="' + statusClass + '">' + detail + (result.failed ? ' <strong>' + result.failed + '</strong> row(s) were skipped.' : '') + '</div>';
+      let metaHtml = '<div class="muted" style="margin-top:.8rem; line-height:1.6;">';
+      if (metadata.name) metaHtml += '<div><strong>Name:</strong> ' + metadata.name + '</div>';
+      if (metadata.matric) metaHtml += '<div><strong>Matric:</strong> ' + metadata.matric + '</div>';
+      if (metadata.session) metaHtml += '<div><strong>Session:</strong> ' + metadata.session + '</div>';
+      if (metadata.semester) metaHtml += '<div><strong>Semester:</strong> ' + metadata.semester + '</div>';
+      if (metadata.gpa !== null) metaHtml += '<div><strong>GPA:</strong> ' + metadata.gpa.toFixed(2) + '</div>';
+      if (metadata.cgpa !== null) metaHtml += '<div><strong>CGPA:</strong> ' + metadata.cgpa.toFixed(2) + '</div>';
+      metaHtml += '</div>';
+
+      summary.innerHTML = '<div class="' + statusClass + '">' + detail + (result.failed ? ' <strong>' + result.failed + '</strong> row(s) were skipped.' : '') + '</div>' + metaHtml;
       if (result.issues.length) {
         summary.innerHTML += '<ul class="muted" style="margin-top:.8rem;">' + result.issues.map((issue) => '<li>' + issue + '</li>').join('') + '</ul>';
       }
