@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wesley University Portal — Result Checker</title>
+<meta name="description" content="Wesley University Ondo student portal. Sign in anytime to check results, GPA and CGPA.">
+<link rel="icon" href="assets/img/wesley-crest.jpeg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,600&family=Manrope:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body data-view="home">
+
+  <canvas id="fx" aria-hidden="true"></canvas>
+  <div class="grain" aria-hidden="true"></div>
+
+  <!-- ============ HEADER ============ -->
+  <header class="site-header">
+    <div class="wrap">
+      <a class="brand" href="#" data-nav="home" aria-label="Wesley University home">
+        <span class="brand-crest">
+          <img src="assets/img/wesley-crest.jpeg" alt="Wesley University Ondo crest">
+        </span>
+        <span class="brand-copy">
+          <span class="brand-name">Wesley University</span>
+          <span class="brand-location">Ondo · Result Portal</span>
+        </span>
+      </a>
+
+      <nav class="nav-actions" aria-label="Primary">
+        <span class="session-pill" id="sessionPill" hidden>
+          <span class="dot"></span> <span id="sessionName"></span>
+        </span>
+        <button class="nav-link" data-nav="dashboard" id="navDashboard" hidden type="button">My results</button>
+        <button class="nav-link" data-nav="logout" id="navLogout" hidden type="button">Sign out</button>
+        <button class="nav-link" data-nav="login" id="navLogin" type="button">Sign in</button>
+        <button class="button button-gold button-small" data-nav="register" id="navRegister" type="button">Create account</button>
+        <a class="nav-link" href="admin/login.html" style="text-decoration:none;">Admin</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- ============ HOME ============ -->
+    <section class="view view-home" id="view-home">
+      <div class="hero wrap">
+        <p class="eyebrow">Est. 2007 · A Methodist Institution</p>
+
+        <div class="crest-stage" aria-hidden="true">
+          <div class="crest-orbit">
+            <div class="crest-3d">
+              <img src="assets/img/wesley-crest.jpeg" alt="">
+            </div>
+          </div>
+          <div class="crest-ring ring-a"></div>
+          <div class="crest-ring ring-b"></div>
+        </div>
+
+        <h1>Your results,<br><span>the moment they're out.</span></h1>
+        <p class="motto">&ldquo;Knowledge and Character for Development&rdquo;</p>
+        <p class="hero-intro">Sign in with your matric number any time, day or night, to see your semester scores, GPA and running CGPA the instant results are published — no queueing at the department notice board.</p>
+
+        <div class="hero-actions">
+          <button class="button button-gold" data-nav="login" type="button">Sign in to check results</button>
+          <button class="button button-outline" data-nav="register" type="button">Create free account</button>
+          <button class="button button-ghost" data-open="guest" type="button">Guest quick-check</button>
+        </div>
+
+        <p class="hero-demo-note">Demo matric numbers to try: <button class="chip" data-fill="WU/2021/0143">WU/2021/0143</button><button class="chip" data-fill="WU/2020/0871">WU/2020/0871</button><button class="chip" data-fill="WU/2022/1290">WU/2022/1290</button></p>
+      </div>
+
+      <div class="wrap">
+        <section class="service-grid" aria-label="Portal services">
+          <article class="tilt-card service-card">
+            <span class="service-index">01</span>
+            <h2>Sign in once, check forever</h2>
+            <p>Create an account with your matric number and a password. Come back any time — this term, next term, three years from now — and your full record is right there.</p>
+          </article>
+          <article class="tilt-card service-card">
+            <span class="service-index">02</span>
+            <h2>GPA &amp; CGPA, worked out live</h2>
+            <p>Every semester's grade point average and your running cumulative GPA on the 5.0 scale are calculated the moment a result is published — no waiting on the registrar.</p>
+          </article>
+          <article class="tilt-card service-card">
+            <span class="service-index">03</span>
+            <h2>Course-by-course breakdown</h2>
+            <p>CA score, exam score, total and grade for every course you registered, grouped by session and semester, with an at-a-glance status for pending results.</p>
+          </article>
+        </section>
+      </div>
+
+      <footer class="site-footer wrap">
+        <p><span class="dot dot-live"></span> Secured student portal · Wesley University Ondo © <span data-year></span></p>
+      </footer>
+    </section>
+
+    <!-- ============ AUTH ============ -->
+    <section class="view view-auth" id="view-auth">
+      <div class="wrap auth-wrap">
+        <div class="auth-side">
+          <p class="eyebrow">Wesley University Portal</p>
+          <h2 class="auth-title">One matric number.<br>Every result you've ever earned.</h2>
+          <p class="auth-copy">Your account remembers your programme, department and every published result. Sign in from any device, any time, and pick up exactly where you left off.</p>
+          <ul class="auth-list">
+            <li>Bank-style account lockout after repeated failed attempts</li>
+            <li>Results only appear once a grade is officially published</li>
+            <li>Your data stays on this device — nothing leaves your browser in this preview</li>
+          </ul>
+        </div>
+
+        <div class="auth-card tilt-card">
+          <div class="auth-tabs" role="tablist">
+            <button class="auth-tab is-active" id="tabLogin" data-tab="login" type="button" role="tab" aria-selected="true">Sign in</button>
+            <button class="auth-tab" id="tabRegister" data-tab="register" type="button" role="tab" aria-selected="false">Create account</button>
+          </div>
+
+          <!-- LOGIN -->
+          <form class="auth-form is-active" id="loginForm" data-panel="login">
+            <p class="form-error" id="loginError" hidden></p>
+            <label class="field">
+              <span>Matric number</span>
+              <input id="loginMatric" name="matric" type="text" autocomplete="username" placeholder="WU/2021/0143" required>
+            </label>
+            <label class="field">
+              <span>Password</span>
+              <input id="loginPassword" name="password" type="password" autocomplete="current-password" placeholder="Enter your password" required>
+            </label>
+            <button class="button button-gold button-full" type="submit">
+              <span>Sign in</span>
+            </button>
+            <p class="form-note">Demo password for the sample accounts is <code>wesley2026</code></p>
+          </form>
+
+          <!-- REGISTER -->
+          <form class="auth-form" id="registerForm" data-panel="register">
+            <p class="form-error" id="registerError" hidden></p>
+            <p class="form-success" id="registerSuccess" hidden></p>
+            <div class="field-row">
+              <label class="field">
+                <span>First name</span>
+                <input id="regFirst" type="text" required>
+              </label>
+              <label class="field">
+                <span>Last name</span>
+                <input id="regLast" type="text" required>
+              </label>
+            </div>
+            <label class="field">
+              <span>Matric number</span>
+              <input id="regMatric" type="text" placeholder="WU/2026/0001" required>
+            </label>
+            <div class="field-row">
+              <label class="field">
+                <span>Department</span>
+                <input id="regDept" type="text" placeholder="Computer Science" required>
+              </label>
+              <label class="field">
+                <span>Level</span>
+                <select id="regLevel" required>
+                  <option value="100 Level">100 Level</option>
+                  <option value="200 Level">200 Level</option>
+                  <option value="300 Level">300 Level</option>
+                  <option value="400 Level">400 Level</option>
+                </select>
+              </label>
+            </div>
+            <label class="field">
+              <span>Password (min. 8 characters)</span>
+              <input id="regPassword" type="password" minlength="8" required>
+            </label>
+            <button class="button button-gold button-full" type="submit">Create account</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ DASHBOARD ============ -->
+    <section class="view view-dashboard" id="view-dashboard">
+      <div class="wrap dash-wrap">
+
+        <div class="dash-head">
+          <div>
+            <p class="eyebrow">Welcome back</p>
+            <h2 id="dashName">Student</h2>
+            <p class="dash-sub" id="dashMeta">Department · Level</p>
+          </div>
+          <div class="cgpa-gauge" id="cgpaGauge">
+            <svg viewBox="0 0 140 140" class="gauge-svg">
+              <circle cx="70" cy="70" r="60" class="gauge-track"></circle>
+              <circle cx="70" cy="70" r="60" class="gauge-fill" id="gaugeFill"></circle>
+            </svg>
+            <div class="gauge-label">
+              <strong id="cgpaValue">0.00</strong>
+              <span>CGPA / 5.00</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="dash-stats">
+          <div class="stat-card tilt-card">
+            <span class="stat-label">Semesters on record</span>
+            <span class="stat-value" id="statSemesters">0</span>
+          </div>
+          <div class="stat-card tilt-card">
+            <span class="stat-label">Courses completed</span>
+            <span class="stat-value" id="statCourses">0</span>
+          </div>
+          <div class="stat-card tilt-card">
+            <span class="stat-label">Units registered</span>
+            <span class="stat-value" id="statUnits">0</span>
+          </div>
+          <div class="stat-card tilt-card">
+            <span class="stat-label">Best semester GPA</span>
+            <span class="stat-value" id="statBestGpa">0.00</span>
+          </div>
+        </div>
+
+        <div class="dash-body" id="dashBody">
+          <!-- semester result cards injected here -->
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ============ GUEST QUICK CHECK MODAL ============ -->
+  <div class="modal-backdrop" id="guestModal" aria-hidden="true">
+    <section class="modal flip-modal" role="dialog" aria-modal="true" aria-labelledby="guestTitle">
+      <div class="modal-header">
+        <div>
+          <p class="modal-kicker">No account needed</p>
+          <h2 id="guestTitle">Guest quick-check</h2>
+        </div>
+        <button class="modal-close" type="button" data-close aria-label="Close">×</button>
+      </div>
+
+      <div class="flip-stage" id="flipStage">
+        <div class="flip-card" id="flipCard">
+          <div class="flip-face flip-front">
+            <form id="guestForm">
+              <label class="field">
+                <span>Matric number</span>
+                <input id="guestMatric" type="text" placeholder="WU/2021/0143" required>
+              </label>
+              <button class="button button-gold button-full" type="submit">Reveal result</button>
+              <p class="modal-note">Only your most recent published semester is shown here. Sign in for your full transcript.</p>
+            </form>
+          </div>
+          <div class="flip-face flip-back" id="guestResult"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="assets/js/main.js"></script>
+</body>
+</html>

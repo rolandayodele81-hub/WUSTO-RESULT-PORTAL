@@ -1,0 +1,65 @@
+[
+  {
+    "matric": "WU/2021/0143",
+    "password": "wesley2026",
+    "firstName": "Adaeze",
+    "lastName": "Okonkwo",
+    "department": "Computer Science",
+    "level": "300 Level",
+    "semesters": [
+      {
+        "session": "2023/2024",
+        "semester": "First Semester",
+        "courses": [
+          {"code": "CSC301", "title": "Data Structures & Algorithms", "units": 3, "ca": 24, "exam": 52, "total": 76, "grade": "A"},
+          {"code": "CSC303", "title": "Operating Systems", "units": 3, "ca": 22, "exam": 48, "total": 70, "grade": "A"},
+          {"code": "CSC305", "title": "Database Management Systems", "units": 2, "ca": 26, "exam": 58, "total": 84, "grade": "A"}
+        ]
+      },
+      {
+        "session": "2023/2024",
+        "semester": "Second Semester",
+        "courses": [
+          {"code": "CSC302", "title": "Software Engineering", "units": 3, "ca": 25, "exam": 55, "total": 80, "grade": "A"},
+          {"code": "CSC304", "title": "Computer Networks", "units": 3, "ca": 23, "exam": 44, "total": 67, "grade": "B"}
+        ]
+      }
+    ]
+  },
+  {
+    "matric": "WU/2020/0871",
+    "password": "wesley2026",
+    "firstName": "Tobiloba",
+    "lastName": "Adewale",
+    "department": "Accounting",
+    "level": "400 Level",
+    "semesters": [
+      {
+        "session": "2023/2024",
+        "semester": "First Semester",
+        "courses": [
+          {"code": "ACC411", "title": "Public Sector Accounting", "units": 3, "ca": 25, "exam": 57, "total": 82, "grade": "A"},
+          {"code": "ACC413", "title": "Management Accounting", "units": 3, "ca": 23, "exam": 49, "total": 72, "grade": "A"}
+        ]
+      }
+    ]
+  },
+  {
+    "matric": "WU/2022/1290",
+    "password": "wesley2026",
+    "firstName": "Miracle",
+    "lastName": "Eze",
+    "department": "Mass Communication",
+    "level": "200 Level",
+    "semesters": [
+      {
+        "session": "2023/2024",
+        "semester": "First Semester",
+        "courses": [
+          {"code": "MAC201", "title": "Reporting & News Writing", "units": 3, "ca": 26, "exam": 56, "total": 82, "grade": "A"},
+          {"code": "MAC203", "title": "Broadcast Journalism", "units": 3, "ca": 24, "exam": 51, "total": 75, "grade": "A"}
+        ]
+      }
+    ]
+  }
+]
