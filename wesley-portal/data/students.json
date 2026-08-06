@@ -61,5 +61,26 @@
         ]
       }
     ]
+  },
+  {
+    "matric": "CSC/2024/0001",
+    "password": "wesley2026",
+    "firstName": "Seyi",
+    "lastName": "Adeyemi",
+    "department": "Computer Science",
+    "level": "200 Level",
+    "semesters": [
+      {
+        "session": "2024/2025",
+        "semester": "First Semester",
+        "courses": [
+          {"code": "CSC201", "title": "Programming II", "units": 3, "ca": 26, "exam": 57, "total": 83, "grade": "A"},
+          {"code": "CSC203", "title": "Discrete Mathematics", "units": 3, "ca": 24, "exam": 50, "total": 74, "grade": "A"},
+          {"code": "CSC205", "title": "Logic Design", "units": 2, "ca": 22, "exam": 45, "total": 67, "grade": "B"},
+          {"code": "MTH201", "title": "Linear Algebra", "units": 3, "ca": 23, "exam": 48, "total": 71, "grade": "A"},
+          {"code": "GST201", "title": "Philosophy & Logic", "units": 2, "ca": 26, "exam": 54, "total": 80, "grade": "A"}
+        ]
+      }
+    ]
   }
 ]

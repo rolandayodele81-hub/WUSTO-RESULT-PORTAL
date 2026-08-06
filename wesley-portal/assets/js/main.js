@@ -111,6 +111,25 @@
             ]
           }
         ]
+      },
+      {
+        matric: "CSC/2024/0001",
+        firstName: "Seyi",
+        lastName: "Adeyemi",
+        department: "Computer Science",
+        level: "200 Level",
+        semesters: [
+          {
+            session: "2024/2025", semester: "First Semester",
+            courses: [
+              course("CSC201", "Programming II", 3, 26, 57),
+              course("CSC203", "Discrete Mathematics", 3, 24, 50),
+              course("CSC205", "Logic Design", 2, 22, 45),
+              course("MTH201", "Linear Algebra", 3, 23, 48),
+              course("GST201", "Philosophy & Logic", 2, 26, 54)
+            ]
+          }
+        ]
       }
     ];
   }
