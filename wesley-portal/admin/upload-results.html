@@ -86,10 +86,16 @@
         const res = await fetch('../api/admin_status.php', { credentials: 'same-origin' });
         const data = await res.json();
         if (!data || data.authenticated !== true) {
-          window.location.href = 'login.html';
+          // allow local demo fallback stored in localStorage for static previews
+          if (localStorage.getItem('wesleyAdminAuth') !== 'true') {
+            window.location.href = 'login.html';
+          }
         }
       } catch (e) {
-        window.location.href = 'login.html';
+        // server unreachable — allow local demo auth stored in localStorage
+        if (localStorage.getItem('wesleyAdminAuth') !== 'true') {
+          window.location.href = 'login.html';
+        }
       }
     })();
 
@@ -99,6 +105,8 @@
         try {
           await fetch('../api/admin_logout.php', { method: 'POST', credentials: 'same-origin' });
         } catch (e) { /* ignore */ }
+        // always clear local demo auth as well
+        try { localStorage.removeItem('wesleyAdminAuth'); } catch (ignore) {}
         window.location.href = 'login.html';
       }
     });

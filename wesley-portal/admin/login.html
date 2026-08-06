@@ -58,7 +58,14 @@
         }
         msg.textContent = data.error || 'Invalid credentials.';
       } catch (error) {
-        msg.textContent = 'Unable to contact server.';
+        // Server unreachable — provide a local demo fallback for static previews.
+        // WARNING: this is only a local/demo fallback and does NOT authenticate against the server.
+        if (username === 'admin' && password === 'admin123') {
+          localStorage.setItem('wesleyAdminAuth', 'true');
+          window.location.href = 'upload-results.html';
+          return;
+        }
+        msg.textContent = 'Unable to contact server. For local demo, use admin / admin123.';
       }
     });
   </script>
