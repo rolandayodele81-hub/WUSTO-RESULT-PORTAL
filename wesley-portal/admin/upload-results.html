@@ -8,7 +8,7 @@
     :root { color-scheme: dark; --bg:#07111f; --panel:#101a2c; --text:#f7efe2; --muted:#b7bfca; --accent:#d4a017; }
     * { box-sizing: border-box; }
     body { margin:0; font-family:Inter, Arial, sans-serif; background:linear-gradient(135deg, var(--bg), #12263d); color:var(--text); }
-    .wrap { max-width: 900px; margin:0 auto; padding:2.5rem 1.1rem 3rem; }
+    .wrap { max-width: 980px; margin:0 auto; padding:2.5rem 1.1rem 3rem; }
     .card { background: var(--panel); border:1px solid rgba(255,255,255,.08); border-radius:1rem; padding:1.2rem; box-shadow:0 20px 40px rgba(0,0,0,.2); }
     form { display:grid; gap:1rem; margin-top:1rem; }
     input, button { padding:.85rem 1rem; border-radius:.8rem; border:1px solid rgba(255,255,255,.12); font:inherit; }
@@ -21,6 +21,8 @@
     .error { color:#ff9aa3; }
     .topbar { display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-bottom:1rem; flex-wrap:wrap; }
     .topbar a { color:#ffd56d; font-weight:700; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:1rem; }
+    .pill { display:inline-block; padding:.25rem .6rem; background:rgba(255,255,255,.06); border-radius:999px; font-size:.8rem; margin-right:.5rem; }
   </style>
 </head>
 <body>
@@ -29,26 +31,45 @@
       <div class="topbar">
         <div>
           <h1 style="margin:0 0 .3rem;">Protected admin panel</h1>
-          <p class="muted" style="margin:0;">Upload student results and update the live demo data.</p>
+          <p class="muted" style="margin:0;">Upload result documents of any type, extract the student result details we need, and publish GPA/CGPA-ready records.</p>
         </div>
         <a href="login.html" onclick="localStorage.removeItem('wesleyAdminAuth');">Sign out</a>
       </div>
 
       <form id="uploadForm">
-        <input type="file" id="resultsCsv" accept=".csv" required>
-        <button type="submit">Publish results</button>
+        <div class="grid">
+          <label class="muted">
+            <div style="margin-bottom:.35rem; font-weight:600;">Result document</div>
+            <input type="file" id="resultsFile" accept="*/*" required>
+          </label>
+          <label class="muted">
+            <div style="margin-bottom:.35rem; font-weight:600;">Matric number (optional)</div>
+            <input id="studentMatric" type="text" placeholder="WU/2021/0143">
+          </label>
+          <label class="muted">
+            <div style="margin-bottom:.35rem; font-weight:600;">Academic session</div>
+            <input id="sessionName" type="text" placeholder="2023/2024">
+          </label>
+          <label class="muted">
+            <div style="margin-bottom:.35rem; font-weight:600;">Semester</div>
+            <input id="semesterName" type="text" placeholder="First Semester">
+          </label>
+        </div>
+        <button type="submit">Upload &amp; publish results</button>
       </form>
 
       <div id="summary" class="muted" style="margin-top:1rem;"></div>
-      <h3 style="margin-top:1.35rem;">Expected CSV format</h3>
-      <pre>matric_number,session,semester,course_code,course_title,units,ca_score,exam_score
-WU/2021/0143,2023/2024,First Semester,CSC401,Artificial Intelligence,3,20,55</pre>
-      <p class="muted"><a href="../student/check-result.html" style="color:#ffd56d;">Open the live checker</a> after uploading.</p>
+
+      <h3 style="margin-top:1.35rem;">Supported uploads</h3>
+      <p class="muted">PDFs, Word documents, images, text files, CSVs, and JSON are accepted. If the document contains structured result rows, the GPA and CGPA are calculated immediately from the extracted data.</p>
+      <p class="muted" style="margin-top:.6rem;"><span class="pill">CSV / JSON / TXT</span><span class="pill">PDF / DOCX / image</span><span class="pill">GPA and CGPA calculated automatically</span></p>
+      <p class="muted" style="margin-top:.8rem;"><a href="../student/check-result.html" style="color:#ffd56d;">Open the live checker</a> after uploading.</p>
     </div>
   </main>
 
   <script>
     const STORAGE_KEY = 'wesleyPortal.students.v1';
+    const DOCUMENT_KEY = 'wesleyPortal.documents.v1';
     const AUTH_KEY = 'wesleyAdminAuth';
     if (localStorage.getItem(AUTH_KEY) !== 'true') {
       window.location.href = 'login.html';
@@ -70,33 +91,190 @@ WU/2021/0143,2023/2024,First Semester,CSC401,Artificial Intelligence,3,20,55</pr
       localStorage.setItem(STORAGE_KEY, JSON.stringify(students));
     }
 
-    form.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      const file = document.getElementById('resultsCsv').files[0];
-      if (!file) {
-        summary.innerHTML = '<span class="error">Choose a CSV file first.</span>';
-        return;
+    function readDocuments() {
+      try {
+        const raw = localStorage.getItem(DOCUMENT_KEY);
+        return raw ? JSON.parse(raw) : [];
+      } catch (error) {
+        return [];
+      }
+    }
+
+    function writeDocuments(documents) {
+      localStorage.setItem(DOCUMENT_KEY, JSON.stringify(documents));
+    }
+
+    function gradeFor(total) {
+      if (total >= 70) return 'A';
+      if (total >= 60) return 'B';
+      if (total >= 50) return 'C';
+      if (total >= 45) return 'D';
+      if (total >= 40) return 'E';
+      return 'F';
+    }
+
+    function semesterGpa(courses) {
+      const points = { A: 5, B: 4, C: 3, D: 2, E: 1, F: 0 };
+      let totalPoints = 0;
+      let totalUnits = 0;
+      courses.forEach((course) => {
+        totalPoints += points[course.grade] * (course.units || 0);
+        totalUnits += course.units || 0;
+      });
+      return totalUnits ? totalPoints / totalUnits : 0;
+    }
+
+    function normalizeText(value) {
+      return String(value || '').trim();
+    }
+
+    function parseCsvLikeLine(line) {
+      const cells = [];
+      let current = '';
+      let insideQuotes = false;
+      for (let i = 0; i < line.length; i += 1) {
+        const char = line[i];
+        if (char === '"') {
+          if (insideQuotes && line[i + 1] === '"') {
+            current += '"';
+            i += 1;
+          } else {
+            insideQuotes = !insideQuotes;
+          }
+        } else if (char === ',' && !insideQuotes) {
+          cells.push(current.trim());
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      cells.push(current.trim());
+      return cells;
+    }
+
+    function detectDelimiter(line) {
+      const candidates = [',', '|', ';', '\t'];
+      let best = ',';
+      let bestCount = 0;
+      candidates.forEach((delimiter) => {
+        const count = (line.match(new RegExp('\\' + delimiter, 'g')) || []).length;
+        if (count > bestCount) {
+          bestCount = count;
+          best = delimiter;
+        }
+      });
+      return best;
+    }
+
+    function pickValue(row, candidates) {
+      if (!row || typeof row !== 'object') return '';
+      const keys = Object.keys(row);
+      for (let i = 0; i < candidates.length; i += 1) {
+        const candidate = candidates[i];
+        const direct = row[candidate];
+        if (normalizeText(direct)) return normalizeText(direct);
+        const match = keys.find((key) => String(key).toLowerCase().replace(/[^a-z0-9]+/g, '') === String(candidate).toLowerCase().replace(/[^a-z0-9]+/g, ''));
+        if (match) return normalizeText(row[match]);
+      }
+      return '';
+    }
+
+    function mapIncomingRow(row, fallbackSession, fallbackSemester, fallbackMatric) {
+      const matric = pickValue(row, ['matric_number', 'matric', 'student_matric', 'studentmatric']) || fallbackMatric;
+      const session = pickValue(row, ['session', 'academic_session', 'academicsession']) || fallbackSession;
+      const semester = pickValue(row, ['semester', 'semester_name', 'semestername']) || fallbackSemester;
+      const courseCode = pickValue(row, ['course_code', 'coursecode', 'code']);
+      const courseTitle = pickValue(row, ['course_title', 'coursetitle', 'title', 'course']);
+      const units = Number(pickValue(row, ['units', 'credit_units', 'creditunits']) || 0);
+      const ca = Number(pickValue(row, ['ca_score', 'ca', 'cascore']) || 0);
+      const exam = Number(pickValue(row, ['exam_score', 'exam', 'examscore']) || 0);
+
+      return {
+        matric: normalizeText(matric).toUpperCase(),
+        session: normalizeText(session),
+        semester: normalizeText(semester),
+        courseCode: normalizeText(courseCode).toUpperCase(),
+        courseTitle: normalizeText(courseTitle),
+        units: Number.isFinite(units) ? units : 0,
+        ca: Number.isFinite(ca) ? ca : 0,
+        exam: Number.isFinite(exam) ? exam : 0
+      };
+    }
+
+    function parseStructuredRows(text, fallbackSession, fallbackSemester, fallbackMatric) {
+      if (!text || !text.trim()) return [];
+      const trimmed = text.trim();
+
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+          return parsed.map((item) => mapIncomingRow(item, fallbackSession, fallbackSemester, fallbackMatric));
+        }
+        if (parsed && typeof parsed === 'object') {
+          return [mapIncomingRow(parsed, fallbackSession, fallbackSemester, fallbackMatric)];
+        }
+      } catch (error) {
+        // Try other formats below.
       }
 
-      const text = await file.text();
-      const rows = text.trim().split(/\r?\n/).map((line) => line.split(',').map((cell) => cell.trim()));
-      const students = readStudents();
-      const [, ...dataRows] = rows;
+      const lines = trimmed.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+      if (!lines.length) return [];
 
+      const headerLine = lines[0];
+      const firstRow = parseCsvLikeLine(headerLine);
+      const hasHeader = firstRow.some((cell) => /matric|session|semester|course|units|ca|exam/i.test(cell));
+
+      if (!hasHeader) {
+        const delimiter = detectDelimiter(headerLine);
+        return lines.map((line) => {
+          const parts = line.split(delimiter).map((cell) => cell.trim());
+          return mapIncomingRow({
+            matric: parts[0],
+            session: parts[1],
+            semester: parts[2],
+            course_code: parts[3],
+            course_title: parts[4],
+            units: parts[5],
+            ca_score: parts[6],
+            exam_score: parts[7]
+          }, fallbackSession, fallbackSemester, fallbackMatric);
+        }).filter((row) => row.matric || row.courseCode || row.courseTitle);
+      }
+
+      const rows = lines.slice(1).map((line) => parseCsvLikeLine(line));
+      const headers = firstRow.map((header) => header.toLowerCase().replace(/[^a-z0-9]+/g, ''));
+      return rows.map((row) => {
+        const record = {};
+        headers.forEach((header, index) => {
+          record[header] = row[index] || '';
+        });
+        return mapIncomingRow(record, fallbackSession, fallbackSemester, fallbackMatric);
+      }).filter((row) => row.matric || row.courseCode || row.courseTitle);
+    }
+
+    function applyParsedRows(parsedRows, fileInfo, fallbackSession, fallbackSemester, fallbackMatric) {
+      const students = readStudents();
       let inserted = 0;
       let failed = 0;
       const issues = [];
 
-      dataRows.forEach((row) => {
-        if (!row.join('').trim()) return;
-        if (row.length < 8) {
+      parsedRows.forEach((row) => {
+        const matric = (row.matric || fallbackMatric || '').trim().toUpperCase();
+        const session = row.session || fallbackSession || 'Unknown';
+        const semester = row.semester || fallbackSemester || 'Unknown';
+        const courseCode = (row.courseCode || 'COURSE').trim().toUpperCase();
+        const courseTitle = (row.courseTitle || courseCode).trim();
+        const units = Number(row.units || 0);
+        const ca = Number(row.ca || 0);
+        const exam = Number(row.exam || 0);
+
+        if (!matric || !session || !semester || !courseCode) {
           failed += 1;
-          issues.push('A row did not contain all required CSV values.');
+          issues.push('One row was missing its matric number, session, semester, or course code.');
           return;
         }
 
-        const [matric, session, semester, courseCode, courseTitle, units, ca, exam] = row;
-        const student = students.find((entry) => entry.matric.toUpperCase() === matric.toUpperCase());
+        const student = students.find((entry) => entry.matric.toUpperCase() === matric);
         if (!student) {
           failed += 1;
           issues.push(`No student found for ${matric}.`);
@@ -104,12 +282,12 @@ WU/2021/0143,2023/2024,First Semester,CSC401,Artificial Intelligence,3,20,55</pr
         }
 
         const semesterEntry = student.semesters.find((entry) => entry.session === session && entry.semester === semester);
-        const total = Number(ca) + Number(exam);
+        const total = ca + exam;
         const grade = total >= 70 ? 'A' : total >= 60 ? 'B' : total >= 50 ? 'C' : total >= 45 ? 'D' : total >= 40 ? 'E' : 'F';
-        const course = { code: courseCode.toUpperCase(), title: courseTitle, units: Number(units), ca: Number(ca), exam: Number(exam), total, grade };
+        const course = { code: courseCode, title: courseTitle, units, ca, exam, total, grade };
 
         if (semesterEntry) {
-          const existingCourse = semesterEntry.courses.find((entry) => entry.code.toUpperCase() === course.code);
+          const existingCourse = semesterEntry.courses.find((entry) => entry.code.toUpperCase() === courseCode);
           if (existingCourse) {
             Object.assign(existingCourse, course);
           } else {
@@ -123,9 +301,56 @@ WU/2021/0143,2023/2024,First Semester,CSC401,Artificial Intelligence,3,20,55</pr
       });
 
       writeStudents(students);
-      summary.innerHTML = '<div class="' + (failed ? 'warning' : 'success') + '"><strong>' + inserted + '</strong> result row(s) published. ' + (failed ? '<strong>' + failed + '</strong> row(s) were skipped.' : '') + '</div>';
-      if (issues.length) {
-        summary.innerHTML += '<ul class="muted" style="margin-top:.8rem;">' + issues.map((issue) => '<li>' + issue + '</li>').join('') + '</ul>';
+
+      const docs = readDocuments();
+      docs.push({
+        id: Date.now(),
+        name: fileInfo.name,
+        type: fileInfo.type || 'application/octet-stream',
+        size: fileInfo.size,
+        uploadedAt: new Date().toISOString(),
+        extractedRows: parsedRows.length,
+        publishedRows: inserted,
+        skippedRows: failed,
+        session: fallbackSession || '',
+        semester: fallbackSemester || '',
+        matric: (fallbackMatric || '').trim().toUpperCase()
+      });
+      writeDocuments(docs.slice(-15));
+
+      return { inserted, failed, issues };
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const file = document.getElementById('resultsFile').files[0];
+      if (!file) {
+        summary.innerHTML = '<span class="error">Choose a document to upload first.</span>';
+        return;
+      }
+
+      const fallbackMatric = document.getElementById('studentMatric').value.trim();
+      const fallbackSession = document.getElementById('sessionName').value.trim();
+      const fallbackSemester = document.getElementById('semesterName').value.trim();
+
+      let text = '';
+      try {
+        text = await file.text();
+      } catch (error) {
+        text = '';
+      }
+
+      const parsedRows = parseStructuredRows(text, fallbackSession, fallbackSemester, fallbackMatric);
+      const result = applyParsedRows(parsedRows, file, fallbackSession, fallbackSemester, fallbackMatric);
+
+      const statusClass = result.failed ? 'warning' : 'success';
+      const detail = parsedRows.length
+        ? `<strong>${result.inserted}</strong> result row(s) published from the uploaded document.`
+        : 'The document was saved, but no structured result rows could be extracted. Upload a CSV, JSON, or text file with result rows to make GPA and CGPA ready.';
+
+      summary.innerHTML = '<div class="' + statusClass + '">' + detail + (result.failed ? ' <strong>' + result.failed + '</strong> row(s) were skipped.' : '') + '</div>';
+      if (result.issues.length) {
+        summary.innerHTML += '<ul class="muted" style="margin-top:.8rem;">' + result.issues.map((issue) => '<li>' + issue + '</li>').join('') + '</ul>';
       }
     });
   </script>
