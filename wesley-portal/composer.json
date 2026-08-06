@@ -2,7 +2,9 @@
   "name": "wesley/portal",
   "description": "Wesley University result portal dependencies",
   "require": {
-    "phpoffice/phpspreadsheet": "^1.30"
+    "phpoffice/phpspreadsheet": "^1.30",
+    "phpoffice/phpword": "^1.0",
+    "smalot/pdfparser": "^2.0"
   },
   "autoload": {
     "psr-4": { "": "includes/" }

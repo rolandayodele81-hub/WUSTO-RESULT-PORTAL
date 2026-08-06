@@ -7,8 +7,8 @@ define('DB_PASS', '');
 
 // Application settings
 define('APP_ENV', 'production');
-// Matric pattern used for basic validation
-define('MATRIC_PATTERN', '/^[A-Z]{2,5}\/20\d{2}\/\d{4}$/i');
+// Matric pattern used for basic validation; allow flexible matric formats across levels
+define('MATRIC_PATTERN', '/^[A-Z0-9][A-Z0-9\/\-\.\s]{2,70}$/i');
 
 // Don't display errors in production
 if (APP_ENV !== 'development') {
