@@ -45,14 +45,11 @@
           <label>Matric number
             <input id="matric" name="matric" placeholder="WU/2021/0143" required>
           </label>
-          <label>Surname
-            <input id="lastName" name="last_name" placeholder="Okonkwo" required>
-          </label>
         </div>
         <button type="submit">Check result</button>
       </form>
 
-      <p class="demo">Try <strong>WU/2021/0143</strong> + <strong>Okonkwo</strong>, <strong>WU/2020/0871</strong> + <strong>Adewale</strong>, or <strong>CSC/2024/0001</strong> + <strong>Adeyemi</strong>.</p>
+      <p class="demo">Enter a matric number to view published name, matric, GPA and CGPA.</p>
       <div id="resultArea" class="result"></div>
     </section>
   </main>
@@ -67,29 +64,75 @@
 
     async function fetchResult(matric) {
       const url = '../api/check_result.php?matric=' + encodeURIComponent(matric);
-      const res = await fetch(url, { credentials: 'same-origin' });
-      return res.json();
+      try {
+        const res = await fetch(url, { credentials: 'same-origin' });
+        return await res.json();
+      } catch (e) {
+        return { found: false };
+      }
+    }
+
+    function fetchLocalResult(matric) {
+      try {
+        const raw = localStorage.getItem('wesleyPortal.students.v1');
+        if (!raw) return { found: false };
+        const students = JSON.parse(raw);
+        const student = students.find(s => String(s.matric || '').toUpperCase() === String(matric).toUpperCase());
+        if (!student) return { found: false };
+
+        const points = { A:5, B:4, C:3, D:2, E:1, F:0 };
+
+        // normalize semesters array
+        const sems = (student.semesters || []).map(s => {
+          const courses = (s.courses || []).map(c => {
+            const ca = Number(c.ca || 0);
+            const exam = Number(c.exam || 0);
+            const total = Number(c.total || (ca + exam));
+            const grade = (c.grade || '').toUpperCase() || (total >= 70 ? 'A' : total >= 60 ? 'B' : total >= 50 ? 'C' : total >= 45 ? 'D' : total >= 40 ? 'E' : 'F');
+            return { code: c.code || c.code, title: c.title || c.courseTitle || '', units: Number(c.units||0), ca, exam, total, grade };
+          });
+
+          const totalUnits = courses.reduce((sum, r) => sum + (Number(r.units)||0), 0);
+          const totalPoints = courses.reduce((sum, r) => sum + ((points[String(r.grade)]||0) * (Number(r.units)||0)), 0);
+          const gpa = totalUnits ? (totalPoints / totalUnits) : 0;
+          return { session_name: s.session || s.session_name || s.sessionName || '', semester_name: s.semester || s.semester_name || s.semesterName || '', courses, gpa };
+        });
+
+        // compute cumulative CGPA across semesters
+        let cumPoints = 0, cumUnits = 0;
+        const semestersWithCgpa = sems.map(sem => {
+          const semUnits = (sem.courses || []).reduce((s, c) => s + (Number(c.units)||0), 0);
+          const semPoints = (sem.courses || []).reduce((s, c) => s + ((points[String(c.grade)]||0) * (Number(c.units)||0)), 0);
+          cumPoints += semPoints; cumUnits += semUnits;
+          const cgpa = cumUnits ? (cumPoints / cumUnits) : 0;
+          return { ...sem, cgpa };
+        });
+
+        const full_name = [student.firstName || student.firstname || '', student.lastName || student.lastname || '', student.full_name || student.fullName || ''].filter(Boolean).join(' ').trim() || (student.full_name || student.fullName || '');
+
+        return { found: true, student: { full_name, matric: student.matric || '', department: student.department || '', level: student.level || '' }, semesters: semestersWithCgpa };
+      } catch (e) {
+        return { found: false };
+      }
     }
 
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       const matric = document.getElementById('matric').value.trim();
-      const lastName = document.getElementById('lastName').value.trim();
       area.innerHTML = '<p class="muted">Checking…</p>';
 
       try {
-        const data = await fetchResult(matric);
+        let data = await fetchResult(matric);
+        if (!data || data.found !== true) {
+          // try localStorage fallback
+          data = fetchLocalResult(matric);
+        }
         if (!data || data.found !== true) {
           area.innerHTML = '<div class="panel" style="padding:1rem; background:rgba(255,80,80,.09);">No Result Found.</div>';
           return;
         }
 
         const student = data.student;
-        // optional surname check to avoid disclosure
-        if (lastName && student.full_name && student.full_name.split(' ').slice(-1)[0].toLowerCase() !== lastName.toLowerCase()) {
-          area.innerHTML = '<div class="panel" style="padding:1rem; background:rgba(255,80,80,.09);">No Result Found.</div>';
-          return;
-        }
 
         const latest = data.semesters && data.semesters.length ? data.semesters[data.semesters.length - 1] : null;
         let html = '<div class="panel" style="padding:1rem; background:rgba(255,255,255,.03);">';
@@ -98,7 +141,7 @@
         if (latest) {
           html += '<div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; margin-bottom:1rem;">';
           html += '<strong>' + escapeHtml(latest.session_name) + ' · ' + escapeHtml(latest.semester_name) + '</strong>';
-          html += '<span class="pill">GPA ' + parseFloat(latest.gpa || 0).toFixed(2) + '</span>';
+          html += '<span class="pill">GPA ' + parseFloat(latest.gpa || 0).toFixed(2) + ' · CGPA ' + parseFloat(latest.cgpa || 0).toFixed(2) + '</span>';
           html += '</div>';
           html += '<table><thead><tr><th>Code</th><th>Course</th><th>Units</th><th>CA</th><th>Exam</th><th>Total</th><th>Grade</th></tr></thead><tbody>';
           (latest.courses || []).forEach((course) => {
