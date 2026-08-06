@@ -45,4 +45,30 @@ function compute_gpa_for_courses(array $courses) {
     return $totalUnits ? round($totalPoints / $totalUnits, 2) : 0.00;
 }
 
+function compute_and_update_cgpa($pdo, $studentId) {
+    // Compute running CGPA per semester and update the semesters table
+    $points = ['A'=>5,'B'=>4,'C'=>3,'D'=>2,'E'=>1,'F'=>0];
+    $stmt = $pdo->prepare('SELECT id FROM semesters WHERE student_id = ? ORDER BY session_name, semester_name, id');
+    $stmt->execute([$studentId]);
+    $semesters = $stmt->fetchAll(PDO::FETCH_COLUMN);
+    $totalPoints = 0;
+    $totalUnits = 0;
+    foreach ($semesters as $semId) {
+        $cstmt = $pdo->prepare('SELECT units, grade FROM courses WHERE semester_id = ?');
+        $cstmt->execute([$semId]);
+        $courses = $cstmt->fetchAll();
+        foreach ($courses as $c) {
+            $g = strtoupper($c['grade'] ?? 'F');
+            $u = (int)($c['units'] ?? 0);
+            $gp = isset($points[$g]) ? $points[$g] : 0;
+            $totalPoints += $gp * $u;
+            $totalUnits += $u;
+        }
+        $running = $totalUnits ? round($totalPoints / $totalUnits, 2) : 0.00;
+        $ustmt = $pdo->prepare('UPDATE semesters SET cgpa = ? WHERE id = ?');
+        $ustmt->execute([$running, $semId]);
+    }
+    return $totalUnits ? round($totalPoints / $totalUnits, 2) : 0.00;
+}
+
 ?>

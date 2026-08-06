@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Admin — Manage Students</title>
+  <link rel="stylesheet" href="../assets/css/style.css">
+  <style> .wrap{max-width:980px;margin:2rem auto} .muted{color:#9aa} table{width:100%;border-collapse:collapse} th,td{padding:.5rem;border-bottom:1px solid rgba(255,255,255,.06)} .actions button{margin-right:.4rem} </style>
+</head>
+<body>
+  <main class="wrap">
+    <h1>Student Management</h1>
+    <p class="muted">Search students by matric or name, view semesters, edit or delete records.</p>
+
+    <div style="margin:1rem 0 1.5rem;">
+      <input id="searchQ" placeholder="Search matric or name" style="width:70%;padding:.6rem;border-radius:.6rem;border:1px solid rgba(255,255,255,.08);"> 
+      <button id="btnSearch" class="button">Search</button>
+      <a href="upload-results.html" style="margin-left:1rem;">Upload results</a>
+    </div>
+
+    <div id="results"></div>
+
+  </main>
+
+  <script>
+    const results = document.getElementById('results');
+    document.getElementById('btnSearch').addEventListener('click', async () => {
+      const q = document.getElementById('searchQ').value.trim();
+      if (!q) return;
+      results.innerHTML = '<p class="muted">Searching…</p>';
+      try {
+        const res = await fetch('../api/search_student.php?q=' + encodeURIComponent(q), { credentials: 'same-origin' });
+        const data = await res.json();
+        if (!data.results || !data.results.length) { results.innerHTML = '<p class="muted">No students found.</p>'; return; }
+        let html = '<table><thead><tr><th>Matric</th><th>Name</th><th>Dept</th><th>Level</th><th></th></tr></thead><tbody>';
+        data.results.forEach(s => {
+          html += '<tr><td>' + s.matric + '</td><td>' + s.full_name + '</td><td>' + (s.department||'') + '</td><td>' + (s.level||'') + '</td>';
+          html += '<td class="actions"><button data-matric="' + s.matric + '" class="btnView">View</button><button data-id="' + s.id + '" class="btnDelete">Delete</button></td></tr>';
+        });
+        html += '</tbody></table>';
+        results.innerHTML = html;
+        document.querySelectorAll('.btnView').forEach(btn => btn.addEventListener('click', viewStudent));
+        document.querySelectorAll('.btnDelete').forEach(btn => btn.addEventListener('click', deleteStudent));
+      } catch (e) { results.innerHTML = '<p class="muted">Search failed.</p>'; }
+    });
+
+    async function viewStudent(ev) {
+      const matric = ev.target.dataset.matric;
+      results.innerHTML = '<p class="muted">Loading…</p>';
+      try {
+        const res = await fetch('../api/get_student_admin.php?matric=' + encodeURIComponent(matric), { credentials: 'same-origin' });
+        const data = await res.json();
+        if (!data.found) { results.innerHTML = '<p class="muted">No record found.</p>'; return; }
+        const s = data.student;
+        let html = '<h2>' + s.full_name + ' · ' + s.matric + '</h2>';
+        data.semesters.forEach(sem => {
+          html += '<div style="margin:1rem 0; padding:1rem; background:rgba(255,255,255,.02); border-radius:.6rem;">';
+          html += '<strong>' + sem.session_name + ' · ' + sem.semester_name + '</strong> <span class="pill">GPA ' + parseFloat(sem.gpa||0).toFixed(2) + ' · CGPA ' + parseFloat(sem.cgpa||0).toFixed(2) + '</span>';
+          html += '<div style="margin-top:.6rem;"><table><thead><tr><th>Code</th><th>Title</th><th>Units</th><th>CA</th><th>Exam</th><th>Total</th><th>Grade</th></tr></thead><tbody>';
+          (sem.courses||[]).forEach(c => html += '<tr><td>' + c.code + '</td><td>' + c.title + '</td><td>' + c.units + '</td><td>' + c.ca + '</td><td>' + c.exam + '</td><td>' + c.total + '</td><td>' + c.grade + '</td></tr>');
+          html += '</tbody></table></div>';
+          html += '<div style="margin-top:.6rem;"><button data-sem="' + sem.id + '" class="btnEdit">Edit</button> <button data-sem="' + sem.id + '" class="btnDelSem">Delete Semester</button></div>';
+          html += '</div>';
+        });
+        results.innerHTML = html;
+        document.querySelectorAll('.btnDelSem').forEach(b => b.addEventListener('click', deleteSemester));
+      } catch (e) { results.innerHTML = '<p class="muted">Failed to load student.</p>'; }
+    }
+
+    async function deleteStudent(ev) {
+      if (!confirm('Delete this student and all their records?')) return;
+      const id = ev.target.dataset.id;
+      try {
+        const res = await fetch('../api/delete_student.php', { method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ student_id: Number(id) }) });
+        const data = await res.json();
+        if (data.success) { ev.target.closest('tr').remove(); }
+      } catch (e) { alert('Delete failed'); }
+    }
+
+    async function deleteSemester(ev) {
+      if (!confirm('Delete this semester?')) return;
+      const sem = ev.target.dataset.sem;
+      try {
+        const res = await fetch('../api/delete_semester.php', { method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ semester_id: Number(sem) }) });
+        const data = await res.json();
+        if (data.success) {
+          ev.target.closest('div[style]').remove();
+        }
+      } catch (e) { alert('Delete failed'); }
+    }
+
+  </script>
+</body>
+</html>
